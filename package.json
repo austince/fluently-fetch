@@ -1,0 +1,23 @@
+{
+  "name": "fluently-fetch",
+  "version": "0.1.0",
+  "description": "A fluent interface to the fetch API, based on Superagent.",
+  "main": "index.js",
+  "scripts": {
+    "prebuild": "rimraf dist",
+    "build": "tsc",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@types/isomorphic-fetch": "0.0.34",
+    "@types/node": "^8.10.30",
+    "rimraf": "^2.6.2",
+    "tslint": "^5.11.0",
+    "typescript": "^3.1.1"
+  },
+  "dependencies": {
+    "isomorphic-fetch": "^2.2.1"
+  }
+}
