@@ -10,7 +10,7 @@
     "align": [false],
     "semicolon": [false, "never"],
     "no-console": {
-      "severity": "error",
+      "severity": "warn",
       "options": [
         "debug",
         "info",

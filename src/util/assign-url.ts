@@ -18,4 +18,6 @@ interface URLParts {
 /**
  * Build a URL from parts.
  */
-export default (url: string, parts: URLParts): string => Object.assign(new URL(url), parts).toString()
+export default (url: string, parts: URLParts): string => {
+  return Object.assign(new URL(url), parts).toString()
+}

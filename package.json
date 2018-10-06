@@ -2,7 +2,7 @@
   "name": "fluently-fetch",
   "version": "0.1.0",
   "description": "A fluent interface to the fetch API, based on Superagent.",
-  "main": "index.js",
+  "main": "./dist/lib/fluently-fetch.js",
   "engines": {
     "node": ">=6.13"
   },
@@ -10,7 +10,7 @@
     "prebuild": "rimraf dist",
     "lint": "tslint src",
     "build": "tsc",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "mocha ./test/**/*.spec.ts --exit"
   },
   "husky": {
     "hooks": {
@@ -25,12 +25,21 @@
   "devDependencies": {
     "@commitlint/cli": "^7.2.0",
     "@commitlint/config-conventional": "^7.1.2",
+    "@types/chai": "^4.1.6",
+    "@types/chai-as-promised": "^7.1.0",
     "@types/isomorphic-fetch": "0.0.34",
+    "@types/mocha": "^5.2.5",
     "@types/node": "^6.0.118",
+    "chai": "^4.2.0",
+    "chai-as-promised": "^7.1.1",
+    "chai-http": "^4.2.0",
     "husky": "^1.1.1",
+    "mocha": "^5.2.0",
     "rimraf": "^2.6.2",
+    "ts-node": "^7.0.1",
     "tslint": "^5.11.0",
     "tslint-config-airbnb": "^5.11.0",
+    "typedoc": "^0.12.0",
     "typescript": "^3.1.1"
   },
   "dependencies": {
