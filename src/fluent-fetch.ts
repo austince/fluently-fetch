@@ -1,27 +1,28 @@
 import 'isomorphic-fetch';
-import assignURL from './util/assign-url';
+import assignUrl from './util/assign-url';
 import serverAddress from './util/server-address';
 import { Server } from 'http'
 
 if (typeof URLSearchParams === 'undefined') {
-  // Node 
+  // Node
   const { URL, URLSearchParams } = require('url')
 }
 
-const shortHandTypes: { [type:string]: string } = {
+const shortHandTypes: { [type: string]: string } = {
   html: 'text/html',
   json: 'application/json',
   xml: 'text/xml',
   urlencoded: 'application/x-www-form-urlencoded',
   form: 'application/x-www-form-urlencoded',
-  'form-data': 'application/x-www-form-urlencoded'
+  'form-data': 'application/x-www-form-urlencoded',
 };
 
 interface FluentRequestInit extends RequestInit {
   url?: string;
 }
 
-class ResponseError extends Error {}
+class ResponseError extends Error {
+}
 
 const pipe = async (res: Response) => res
 
@@ -44,8 +45,8 @@ export default class FluentRequest extends Request {
     this.body = null
     this.credentials = 'same-origin'
 
-    this.responsePipe = async (res) => res
-    this.reqBodyPipe = async (body) => body
+    this.responsePipe = async res => res
+    this.reqBodyPipe = async body => body
   }
 
   private addReqBodyPipe(pipe: (body: any) => Promise<any>) {
@@ -73,7 +74,7 @@ export default class FluentRequest extends Request {
       redirect: this.redirect,
       referrer: this.referrer,
       integrity: this.integrity,
-    }, overrides)
+    }, overrides);
     if (this.app) {
       return new FluentRequest(this.app as Server, initOptions)
     }
@@ -83,38 +84,37 @@ export default class FluentRequest extends Request {
   get(pathname: string) {
     return this.clone({
       method: 'GET',
-      url: assignURL(this.url, { pathname })
+      url: assignUrl(this.url, { pathname }),
     })
   }
 
   put(pathname: string) {
     return this.clone({
       method: 'PUT',
-      url: assignURL(this.url, { pathname })
+      url: assignUrl(this.url, { pathname }),
     })
   }
 
   post(pathname: string) {
     return this.clone({
       method: 'POST',
-      url: assignURL(this.url, { pathname })
+      url: assignUrl(this.url, { pathname }),
     })
   }
 
   delete(pathname: string) {
     return this.clone({
       method: 'DELETE',
-      url: assignURL(this.url, { pathname })
+      url: assignUrl(this.url, { pathname }),
     })
   }
 
   head(pathname: string) {
     return this.clone({
       method: 'HEAD',
-      url: assignURL(this.url, { pathname })
+      url: assignUrl(this.url, { pathname }),
     })
   }
-
 
   set(key: object | string, value: string) {
     if (typeof key === 'object') {
@@ -143,22 +143,22 @@ export default class FluentRequest extends Request {
     for (const [key, value] of queryParams.entries()) {
       searchParams.set(key, value)
     }
-    this.url = assignURL(this.url, { searchParams })
+    this.url = assignUrl(this.url, { searchParams })
     return this
   }
 
   // Breaking change from the SuperAgent api
-  // Sort comparitor takes two tuples of form [param, value]
-  sortQuery(comparitor?: (a: [string, string], b: [string, string]) => boolean) {
+  // Sort comparator takes two tuples of form [param, value]
+  sortQuery(comparator?: (a: [string, string], b: [string, string]) => number) {
     const { searchParams } = new URL(this.url)
     const queryArr = Array.from(searchParams)
-    if (comparitor) {
-      queryArr.sort(comparitor)
+    if (comparator) {
+      queryArr.sort(comparator)
     } else {
       queryArr.sort()
     }
     const sortedParams = new URLSearchParams(queryArr)
-    this.url = assignURL(this.url, { searchParams })
+    this.url = assignUrl(this.url, { searchParams })
     return this
   }
 
@@ -191,7 +191,7 @@ export default class FluentRequest extends Request {
     });
   }
 
-  timeout(amount: number|{ response?: number, deadline?: number}) {
+  timeout(amount: number | { response?: number, deadline?: number }) {
     // todo
   }
 
@@ -207,7 +207,7 @@ export default class FluentRequest extends Request {
     // todo
   }
 
-  // Node 
+  // Node
   ca(ca: string) {
     // todo
   }
@@ -238,14 +238,15 @@ export default class FluentRequest extends Request {
     }
 
     // Either overwrite or append to the body
+    let body;
     if (typeof this.body === 'string') {
       // Concatenate form data
-      data = this.body + '&'
+      body = `${this.body}&`
     } else if (typeof this.body === 'object') {
-      data = Object.assign(this.body, data)
+      body = Object.assign(this.body, data)
     }
 
-    this.body = data as ReadableStream
+    this.body = data as ReadableStream;
 
     return this
   }

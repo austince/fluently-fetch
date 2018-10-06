@@ -7,6 +7,7 @@
         120
       ]
     },
+    "align": [false],
     "semicolon": [false, "never"],
     "no-console": {
       "severity": "error",
