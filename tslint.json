@@ -1,0 +1,23 @@
+{
+  "extends": "tslint-config-airbnb",
+  "rulesDirectory": [],
+  "rules": {
+    "max-line-length": {
+      "options": [
+        120
+      ]
+    },
+    "semicolon": [false, "never"],
+    "no-console": {
+      "severity": "error",
+      "options": [
+        "debug",
+        "info",
+        "log",
+        "time",
+        "timeEnd",
+        "trace"
+      ]
+    }
+  }
+}
