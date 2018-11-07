@@ -1,64 +1,92 @@
-import 'isomorphic-fetch'
 import { Server } from 'net'
+import { IncomingMessage, ServerResponse } from 'http'
 import assignUrl from './util/assign-url'
 import serverAddress from './util/server-address'
 import shortHandTypes from './util/short-hand-types'
-import FluentResponseError from './FluentResponseError'
+import base64Encode from './util/base64-encode'
+import startServer from './util/start-server'
+import FluentResponseError from './errors/FluentResponseError'
+import timedFetch from './timed-fetch'
+import fetch from './fetch'
+import URL from './URL'
+import URLSearchParams from './URLSearchParams'
 
-if (typeof URLSearchParams === 'undefined') {
-  // Node
-  const { URL, URLSearchParams } = require('url')
+function serializeBody(body) {
+  let serialized = body
+  if (body && typeof body !== 'string') {
+    serialized = JSON.stringify(body)
+  }
+  return serialized
 }
 
 export interface FluentRequestInit extends RequestInit {
-  url?: string;
-  body?: string
+  url?: string
+  body?: any
 }
 
+export interface AuthOptions {
+  type: 'basic' | 'auto' | 'bearer'
+}
+
+export type HttpApp = (request: IncomingMessage, response: ServerResponse) => void
+
 export class FluentRequest extends Request {
-  app: boolean | Server | undefined
+  server: Server | undefined
   url: string
   credentials: RequestCredentials
-  body: any
+  private readonly bodyContent: any
+  private pluginPipe
   private responsePipe: (res: Response) => Promise<Response>
-  private reqBodyPipe: (body: any) => Promise<any>
+  private reqBodyPipe
+  private timeoutMs: number | undefined
 
-  constructor(app: Server | string = '', initOptions: FluentRequestInit = {}) {
+  constructor(app: Server | HttpApp | string = '', initOptions: FluentRequestInit = {}) {
     let url = app
-    if (typeof app === 'function') {
-      url = initOptions.url || serverAddress(app)
+    let server
+    if (typeof app !== 'string') {
+      server = startServer(app)
+      url = initOptions.url || serverAddress(server)
     }
-    url = url as string
+
     if (!url) {
+      // Default to localhost if nothing is specified
       url = 'http://localhost'
     }
-    super(url, initOptions)
-    this.url = url
+
+    const body = initOptions.body
+    initOptions.body = serializeBody(body)
+
+    super(url as string, initOptions)
+    this.server = server
+    this.url = url as string
     this.credentials = 'same-origin'
+    this.bodyContent = body
 
     this.responsePipe = async res => res
+    this.pluginPipe = req => req
     this.reqBodyPipe = async body => body
   }
 
-  private pipeBody(pipe: (body: any) => Promise<any>) {
+  private pipeBody(pipe: (body: any) => Response | Promise<any>) {
     const currentPipe = this.reqBodyPipe
-    this.reqBodyPipe = (body) => {
-      return currentPipe(body).then(pipe)
-    }
+    this.reqBodyPipe = body => currentPipe(body).then(pipe)
   }
 
-  private pipeRes(pipe: (res: Response) => Promise<Response>) {
+  private pipeRes(pipe: (res: Response) => Response | Promise<Response>) {
     const currentPipe = this.responsePipe
-    this.responsePipe = (res) => {
-      return currentPipe(res).then(pipe)
-    }
+    this.responsePipe = res => currentPipe(res).then(pipe)
+  }
+
+  use(plugin: (req: FluentRequest) => FluentRequest): FluentRequest {
+    const currentPipe = this.pluginPipe
+    this.pluginPipe = req => plugin(currentPipe(req))
+    return this
   }
 
   clone(overrides: FluentRequestInit = {}) {
     const initOptions = Object.assign({
       method: this.method,
       headers: this.headers,
-      body: this.body,
       mode: this.mode,
       credentials: this.credentials,
       cache: this.cache,
@@ -66,10 +94,19 @@ export class FluentRequest extends Request {
       referrer: this.referrer,
       integrity: this.integrity,
     }, overrides)
-    if (this.app) {
-      return new FluentRequest(this.app as Server, initOptions)
+    let cloned
+    if (this.server) {
+      cloned = new FluentRequest(this.server, initOptions)
+    } else {
+      cloned = new FluentRequest(this.url, initOptions)
     }
-    return new FluentRequest(this.url, initOptions)
+
+    cloned.responsePipe = this.responsePipe
+    cloned.pluginPipe = this.pluginPipe
+    cloned.reqBodyPipe = this.reqBodyPipe
+    cloned.body = this.body
+
+    return cloned
   }
 
   get(pathname: string) {
@@ -86,6 +123,13 @@ export class FluentRequest extends Request {
     })
   }
 
+  patch(pathname: string) {
+    return this.clone({
+      method: 'PATCH',
+      url: assignUrl(this.url, { pathname }),
+    })
+  }
+
   post(pathname: string) {
     return this.clone({
       method: 'POST',
@@ -98,6 +142,10 @@ export class FluentRequest extends Request {
       method: 'DELETE',
       url: assignUrl(this.url, { pathname }),
     })
+  }
+
+  del(pathname: string) {
+    return this.delete(pathname)
   }
 
   head(pathname: string) {
@@ -119,16 +167,14 @@ export class FluentRequest extends Request {
   }
 
   type(type: string) {
-    this.set('Content-Type', shortHandTypes[type] || type)
-    return this
+    return this.set('Content-Type', shortHandTypes[type] || type)
   }
 
   accept(type: string) {
-    this.set('Accept', shortHandTypes[type] || type)
-    return this
+    return this.set('Accept', shortHandTypes[type] || type)
   }
 
-  query(query: string[][] | Record<string, string> | string | URLSearchParams) {
+  query(query: string[][] | string | URLSearchParams) {
     const queryParams = new URLSearchParams(query)
     const { searchParams } = new URL(this.url)
     for (const [key, value] of queryParams.entries()) {
@@ -142,35 +188,49 @@ export class FluentRequest extends Request {
   // Sort comparator takes two tuples of form [param, value]
   sortQuery(comparator?: (a: [string, string], b: [string, string]) => number) {
     const { searchParams } = new URL(this.url)
-    const queryArr = Array.from(searchParams)
+    const queryArr = Array.from(searchParams) as [string, string][]
     if (comparator) {
       queryArr.sort(comparator)
     } else {
       queryArr.sort()
     }
     const sortedParams = new URLSearchParams(queryArr)
-    this.url = assignUrl(this.url, { searchParams })
+    this.url = assignUrl(this.url, { searchParams: sortedParams })
     return this
   }
 
-  redirects(count: number) {
-    // todo
-  }
+  auth(username: string, password: AuthOptions | string = '', options?: AuthOptions) {
+    if (typeof password === 'object') {
+      options = password as AuthOptions
+      password = ''
+    }
 
-  // Breaking: currently only supports basic auth
-  auth(username: string, password: string) {
-    const auth = `${username}:${password}`
-    const basicAuth = `Basic ${Buffer.from(auth).toString('base64')}`
-    return this.set('Authorization', basicAuth)
+    if (!options) {
+      options = {
+        type: 'basic',
+      }
+    }
+
+    switch (options.type) {
+      case 'basic':
+        return this.set('Authorization', `Basic ${username}:${password}`)
+      case 'bearer':
+        return this.set('Authorization', `Bearer ${base64Encode(`${username}:${password}`)}`)
+      case 'auto':
+        return this.clone({
+          url: assignUrl(this.url, {
+            username,
+            password,
+          }),
+        })
+      default:
+        throw new TypeError('Auth type must be either `basic`, `auto`, or `bearer`.')
+    }
   }
 
   withCredentials() {
     this.credentials = 'include'
     return this
-  }
-
-  retry() {
-    // todo
   }
 
   ok(filter: (res: Response) => boolean) {
@@ -182,7 +242,23 @@ export class FluentRequest extends Request {
     })
   }
 
-  timeout(amount: number | { response?: number, deadline?: number }) {
+  setTimeout(amount: number | { response?: number, deadline?: number }) {
+    if (typeof amount === 'object') {
+      if (amount.deadline !== undefined) {
+        throw new TypeError('Deadline timeout is not supported.')
+      }
+      this.timeoutMs = amount.response
+    } else {
+      this.timeoutMs = amount
+    }
+    return this
+  }
+
+  serialize(fn: (body: any) => any | Promise<any>) {
+    this.pipeBody(async body => fn(body))
+  }
+
+  retry() {
     // todo
   }
 
@@ -190,28 +266,7 @@ export class FluentRequest extends Request {
     // todo
   }
 
-  serialize(fn: (body: any) => any) {
-    this.pipeBody(fn)
-  }
-
-  parse() {
-    // todo
-  }
-
-  // Node
-  ca(ca: string) {
-    // todo
-  }
-
-  key(key: string) {
-    // todo
-  }
-
-  pfx(pfx: string) {
-    // todo
-  }
-
-  cert(cert: string) {
+  redirects(count: number) {
     // todo
   }
 
@@ -220,43 +275,78 @@ export class FluentRequest extends Request {
   }
 
   send(data: string | object) {
-    // todo: Handle things like FormData
-    if (typeof data === 'string') {
-      this.type(shortHandTypes.urlencoded)
-    } else {
-      // Default to json
-      this.type(shortHandTypes.json)
+    let newType = this.headers.get('Content-Type')
+    if (!newType) {
+      if (typeof data === 'string') {
+        newType = shortHandTypes.urlencoded
+      } else if (typeof FormData !== 'undefined' && this.bodyContent instanceof FormData) {
+        newType = shortHandTypes.multipartForm
+      } else {
+        // Default to json
+        newType = shortHandTypes.json
+      }
     }
 
     // Either overwrite or append to the body
     let body = data
-    if (typeof this.body === 'string') {
+    if (typeof this.bodyContent === 'string') {
       // Concatenate form data
-      body = `${this.body}&`
-    } else if (typeof this.body === 'object') {
-      body = Object.assign(this.body, data)
+      body = `${this.bodyContent}&`
+    } else if (typeof FormData !== 'undefined' && this.bodyContent instanceof FormData) {
+      body = data
+    } else if (typeof this.bodyContent === 'object') {
+      body = Object.assign(this.bodyContent, data)
     }
 
-    this.body = body
     return this
+      .type(newType)
+      .clone({
+        body,
+      })
   }
 
-  async then(resolve: (res: Response) => any, reject: (reason: any) => any) {
-    let body = await this.reqBodyPipe(this.body)
-
-    if (typeof body === 'object') {
-      body = JSON.stringify(body)
+  async invoke(): Promise<Response> {
+    const bodyContent = await this.reqBodyPipe(this.bodyContent)
+    let req: FluentRequest = this // tslint:disable-line:no-this-assignment
+    if (bodyContent) {
+      req = this.send(bodyContent)
     }
 
-    const pipped = this.clone({ body })
+    // Apply plugins
+    const plugged = this.pluginPipe(this)
 
-    return fetch(pipped)
-      .then(res => this.responsePipe(res))
-      .then(resolve)
-      .catch(reject)
+    // Apply timeout, if specified
+    let res
+    if (this.timeoutMs !== undefined) {
+      try {
+        res = await timedFetch(req, plugged.timeoutMs)
+      } catch (err) {
+        throw err
+      }
+    } else {
+      res = await fetch(req)
+    }
+    const pipedRes: Response = await this.responsePipe(res)
+
+    return new Promise<Response>((resolve) => {
+      if (this.server) {
+        this.server.close(() => resolve(pipedRes))
+      } else {
+        resolve(res)
+      }
+    })
   }
 
-  end(resolve: (res: Response) => any, reject: (reason: any) => any): Promise<Response> {
+  async then(resolve, reject) {
+    try {
+      const res = await this.invoke()
+      resolve(res)
+    } catch (err) {
+      reject(err)
+    }
+  }
+
+  end(resolve: (res: Response) => any, reject: (reason: any) => any) {
     return this.then(resolve, reject)
   }
 }
