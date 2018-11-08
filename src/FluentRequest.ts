@@ -109,39 +109,31 @@ export class FluentRequest extends Request {
     return cloned
   }
 
-  get(pathname: string) {
+  private setMethodAndPath(method: string, pathname: string) {
     return this.clone({
-      method: 'GET',
+      method,
       url: assignUrl(this.url, { pathname }),
     })
+  }
+
+  get(pathname: string) {
+    return this.setMethodAndPath('GET', pathname)
   }
 
   put(pathname: string) {
-    return this.clone({
-      method: 'PUT',
-      url: assignUrl(this.url, { pathname }),
-    })
+    return this.setMethodAndPath('PUT', pathname)
   }
 
   patch(pathname: string) {
-    return this.clone({
-      method: 'PATCH',
-      url: assignUrl(this.url, { pathname }),
-    })
+    return this.setMethodAndPath('PATCH', pathname)
   }
 
   post(pathname: string) {
-    return this.clone({
-      method: 'POST',
-      url: assignUrl(this.url, { pathname }),
-    })
+    return this.setMethodAndPath('POST', pathname)
   }
 
   delete(pathname: string) {
-    return this.clone({
-      method: 'DELETE',
-      url: assignUrl(this.url, { pathname }),
-    })
+    return this.setMethodAndPath('DELETE', pathname)
   }
 
   del(pathname: string) {
@@ -149,10 +141,7 @@ export class FluentRequest extends Request {
   }
 
   head(pathname: string) {
-    return this.clone({
-      method: 'HEAD',
-      url: assignUrl(this.url, { pathname }),
-    })
+    return this.setMethodAndPath('HEAD', pathname)
   }
 
   set(key: object | string, value: string) {
@@ -240,6 +229,7 @@ export class FluentRequest extends Request {
       }
       return res
     })
+    return this
   }
 
   setTimeout(amount: number | { response?: number, deadline?: number }) {
@@ -256,6 +246,7 @@ export class FluentRequest extends Request {
 
   serialize(fn: (body: any) => any | Promise<any>) {
     this.pipeBody(async body => fn(body))
+    return this
   }
 
   retry() {
@@ -313,24 +304,24 @@ export class FluentRequest extends Request {
     }
 
     // Apply plugins
-    const plugged = this.pluginPipe(this)
+    req = this.pluginPipe(req)
 
     // Apply timeout, if specified
     let res
-    if (this.timeoutMs !== undefined) {
+    if (req.timeoutMs !== undefined) {
       try {
-        res = await timedFetch(req, plugged.timeoutMs)
+        res = await timedFetch(req, req.timeoutMs)
       } catch (err) {
         throw err
       }
     } else {
       res = await fetch(req)
     }
-    const pipedRes: Response = await this.responsePipe(res)
+    res = await this.responsePipe(res)
 
     return new Promise<Response>((resolve) => {
       if (this.server) {
-        this.server.close(() => resolve(pipedRes))
+        this.server.close(() => resolve(res))
       } else {
         resolve(res)
       }
