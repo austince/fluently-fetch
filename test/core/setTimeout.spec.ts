@@ -1,6 +1,6 @@
-import fluentlyFetch from '../../src/fluently-fetch'
 import * as chai from 'chai'
 import * as express from 'express'
+import fluentlyFetch from '../../src/fluently-fetch'
 import FluentRequestTimeoutError from '../../src/errors/FluentRequestTimeoutError'
 
 const { expect } = chai
@@ -13,11 +13,10 @@ app.get('/setTimeout/delay/:amount', (req, res, done) => {
   }, amount)
 })
 
-describe('fluently-fetch', function () {
-  describe('setTimeout', () => {
-    this.timeout(10000)
+describe('fluently-fetch setTimeout', function () {
+  this.timeout(10000)
 
-    it('should error when request exceeds timeout', async () => {
+  it('should error when request exceeds timeout', async () => {
       const req = fluentlyFetch(app)
         .get('/setTimeout/delay/300')
         .setTimeout(200)
@@ -25,7 +24,7 @@ describe('fluently-fetch', function () {
       await expect(req.invoke()).to.be.eventually.rejectedWith(FluentRequestTimeoutError)
     })
 
-    it('should return response normally when the timeout is not exceeded', async () => {
+  it('should return response normally when the timeout is not exceeded', async () => {
       const res = await fluentlyFetch(app)
         .get('/setTimeout/delay/100')
         .setTimeout(200)
@@ -34,9 +33,8 @@ describe('fluently-fetch', function () {
       expect(res).to.have.status(200)
     })
 
-    it('should reject old parameters', () => {
+  it('should reject deprecated parameters', () => {
       const req = fluentlyFetch(app)
       expect(() => req.setTimeout({ deadline: 10 })).to.throw(TypeError)
     })
-  })
 })

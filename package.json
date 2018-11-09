@@ -8,7 +8,7 @@
   },
   "scripts": {
     "prebuild": "rimraf dist",
-    "lint": "tslint src",
+    "lint": "tslint ./src/**/*.ts ./test/**/*.ts",
     "build": "tsc",
     "test": "mocha ./test/**/*.spec.ts --exit"
   },
