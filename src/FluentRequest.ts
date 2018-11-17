@@ -328,7 +328,7 @@ export class FluentRequest extends Request {
     })
   }
 
-  async then(resolve, reject) {
+  async then(resolve: Function, reject: Function) {
     try {
       const res = await this.invoke()
       resolve(res)

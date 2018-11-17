@@ -1,10 +1,16 @@
 import fluentlyFetch from '../../src/fluently-fetch'
 import * as chai from 'chai'
 import setupSandbox from '../support/setup-sandbox'
+import getBaseUri from '../support/get-base-uri'
 
 const { expect } = chai
 
 describe('fluently-fetch', () => {
+  let uri
+  before(async () => {
+    uri = await getBaseUri()
+  })
+
   describe('use', () => {
     const sandbox = setupSandbox()
 
@@ -19,7 +25,7 @@ describe('fluently-fetch', () => {
       }
       sandbox.spy(plugins, 'uuid')
 
-      const req = fluentlyFetch('http://example.com')
+      const req = fluentlyFetch(uri)
         .get('/echo')
         .use(plugins.uuid)
 

@@ -4,8 +4,8 @@ const shortHandTypes: { [type: string]: string } = {
   xml: 'text/xml',
   urlencoded: 'application/x-www-form-urlencoded',
   form: 'application/x-www-form-urlencoded',
-  'form-data': 'application/x-www-form-urlencoded',
-  multipartForm: 'multipart/form-data',
+  'form-data': 'multipart/form-data',
+  'multipart-form': 'multipart/form-data',
 }
 
 export default shortHandTypes
