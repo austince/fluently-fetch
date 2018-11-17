@@ -7,9 +7,16 @@
         120
       ]
     },
-    "align": [false],
-    "semicolon": [false, "never"],
-    "no-parameter-reassignment": [false],
+    "align": [
+      false
+    ],
+    "semicolon": [
+      false,
+      "never"
+    ],
+    "no-parameter-reassignment": [
+      false
+    ],
     "no-console": {
       "severity": "warn",
       "options": [
