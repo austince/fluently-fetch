@@ -19,4 +19,8 @@ app.all('/echo', (req, res) => {
   })
 })
 
+app.all('/error', (req, res) => {
+  throw new Error('Error requested')
+})
+
 export default app

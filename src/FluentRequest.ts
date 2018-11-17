@@ -225,7 +225,7 @@ export class FluentRequest extends Request {
   ok(filter: (res: Response) => boolean) {
     this.pipeRes(async (res: Response) => {
       if (!filter(res)) {
-        throw new FluentResponseError(res.toString())
+        throw new FluentResponseError(res)
       }
       return res
     })
@@ -337,7 +337,10 @@ export class FluentRequest extends Request {
     }
   }
 
-  end(resolve: (res: Response) => any, reject: (reason: any) => any) {
-    return this.then(resolve, reject)
+  end(handler: (err: Error|null, res?: Response) => any) {
+    return this.then(
+      res => handler(null, res),
+      err => handler(err),
+    )
   }
 }
