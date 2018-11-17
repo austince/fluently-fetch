@@ -34,7 +34,10 @@ export class FluentRequest extends Request {
   server: Server | undefined
   url: string
   credentials: RequestCredentials
-  private readonly bodyContent: any
+  /**
+   * Body before it is serialized for the request.
+   */
+  private rawBody: any
   private pluginPipe
   private responsePipe: (res: Response) => Promise<Response>
   private reqBodyPipe
@@ -53,23 +56,19 @@ export class FluentRequest extends Request {
       url = 'http://localhost'
     }
 
-    const body = initOptions.body
-    initOptions.body = serializeBody(body)
-
     super(url as string, initOptions)
     this.server = server
     this.url = url as string
     this.credentials = 'same-origin'
-    this.bodyContent = body
 
     this.responsePipe = async res => res
     this.pluginPipe = req => req
-    this.reqBodyPipe = async body => body
+    this.reqBodyPipe = async body => serializeBody(body)
   }
 
   private pipeBody(pipe: (body: any) => Response | Promise<any>) {
     const currentPipe = this.reqBodyPipe
-    this.reqBodyPipe = body => currentPipe(body).then(pipe)
+    this.reqBodyPipe = body => (async body => pipe(body))(body).then(currentPipe)
   }
 
   private pipeRes(pipe: (res: Response) => Response | Promise<Response>) {
@@ -93,9 +92,11 @@ export class FluentRequest extends Request {
       redirect: this.redirect,
       referrer: this.referrer,
       integrity: this.integrity,
+      body: this.body,
     }, overrides)
     let cloned
     if (this.server) {
+      initOptions.url = overrides.url || this.url
       cloned = new FluentRequest(this.server, initOptions)
     } else {
       cloned = new FluentRequest(this.url, initOptions)
@@ -104,7 +105,7 @@ export class FluentRequest extends Request {
     cloned.responsePipe = this.responsePipe
     cloned.pluginPipe = this.pluginPipe
     cloned.reqBodyPipe = this.reqBodyPipe
-    cloned.body = this.body
+    cloned.rawBody = this.rawBody
 
     return cloned
   }
@@ -142,6 +143,10 @@ export class FluentRequest extends Request {
 
   head(pathname: string) {
     return this.setMethodAndPath('HEAD', pathname)
+  }
+
+  options(pathname: string) {
+    return this.setMethodAndPath('OPTIONS', pathname)
   }
 
   set(key: object | string, value: string) {
@@ -270,8 +275,8 @@ export class FluentRequest extends Request {
     if (!newType) {
       if (typeof data === 'string') {
         newType = shortHandTypes.urlencoded
-      } else if (typeof FormData !== 'undefined' && this.bodyContent instanceof FormData) {
-        newType = shortHandTypes.multipartForm
+      } else if (typeof FormData !== 'undefined' && this.rawBody instanceof FormData) {
+        newType = shortHandTypes.multipart
       } else {
         // Default to json
         newType = shortHandTypes.json
@@ -279,28 +284,25 @@ export class FluentRequest extends Request {
     }
 
     // Either overwrite or append to the body
-    let body = data
-    if (typeof this.bodyContent === 'string') {
+    if (typeof this.rawBody === 'string') {
       // Concatenate form data
-      body = `${this.bodyContent}&`
-    } else if (typeof FormData !== 'undefined' && this.bodyContent instanceof FormData) {
-      body = data
-    } else if (typeof this.bodyContent === 'object') {
-      body = Object.assign(this.bodyContent, data)
+      this.rawBody = `${this.rawBody}&`
+    } else if (typeof FormData !== 'undefined' && this.rawBody instanceof FormData) {
+      this.rawBody = data
+    } else if (typeof this.rawBody === 'object') {
+      this.rawBody = Object.assign(this.rawBody, data)
+    } else {
+      this.rawBody = data
     }
 
-    return this
-      .type(newType)
-      .clone({
-        body,
-      })
+    return this.type(newType)
   }
 
-  async invoke(): Promise<Response> {
-    const bodyContent = await this.reqBodyPipe(this.bodyContent)
+  protected async invoke(): Promise<Response> {
+    const bodyContent = await this.reqBodyPipe(this.rawBody)
     let req: FluentRequest = this // tslint:disable-line:no-this-assignment
-    if (bodyContent) {
-      req = this.send(bodyContent)
+    if (this.rawBody) {
+      req = this.clone({ body: bodyContent })
     }
 
     // Apply plugins

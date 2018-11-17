@@ -14,6 +14,8 @@ export interface FluentlyFetch {
 
   patch(app?: Server | HttpApp | string, initOptions?: FluentRequestInit): FluentRequest
 
+  options(app?: Server | HttpApp | string, initOptions?: FluentRequestInit): FluentRequest
+
   delete(app?: Server | HttpApp | string, initOptions?: FluentRequestInit): FluentRequest
 
   del(app?: Server | HttpApp | string, initOptions?: FluentRequestInit): FluentRequest
@@ -33,6 +35,7 @@ const fluentlyFetch: FluentlyFetch = fetcher as FluentlyFetch
   'post',
   'patch',
   'delete',
+  'options',
   'head',
 ].forEach((method) => {
   fluentlyFetch[method] = (app: Server | HttpApp | string = '', initOptions: FluentRequestInit = {}) => {
@@ -41,6 +44,7 @@ const fluentlyFetch: FluentlyFetch = fetcher as FluentlyFetch
   }
 })
 
+// Aliases
 fluentlyFetch.del = fluentlyFetch.delete
 
 export default fluentlyFetch

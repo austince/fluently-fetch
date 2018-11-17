@@ -34,7 +34,7 @@ describe('fluently-fetch type', function () {
     ['urlencoded', 'application/x-www-form-urlencoded'],
     ['form', 'application/x-www-form-urlencoded'],
     ['form-data', 'multipart/form-data'],
-    ['multipart-form', 'multipart/form-data'],
+    ['multipart', 'multipart/form-data'],
   ].forEach(([shorthand, type]) => it(`should set shorthand ${shorthand} to ${type}`, async () => {
     const res = await fluentlyFetch(uri)
       .get('/echo')
