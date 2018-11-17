@@ -30,6 +30,8 @@ export interface AuthOptions {
 
 export type HttpApp = (request: IncomingMessage, response: ServerResponse) => void
 
+export type FluentRequestPlugin = (req: FluentRequest) => FluentRequest
+
 export class FluentRequest extends Request {
   server: Server | undefined
   url: string
@@ -76,7 +78,7 @@ export class FluentRequest extends Request {
     this.responsePipe = res => currentPipe(res).then(pipe)
   }
 
-  use(plugin: (req: FluentRequest) => FluentRequest): FluentRequest {
+  use(plugin: FluentRequestPlugin): FluentRequest {
     const currentPipe = this.pluginPipe
     this.pluginPipe = req => plugin(currentPipe(req))
     return this

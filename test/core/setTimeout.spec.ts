@@ -15,16 +15,16 @@ describe('fluently-fetch setTimeout', function () {
 
   it('should error when request exceeds timeout', async () => {
     const req = fluentlyFetch(uri)
-      .get('/delay/300')
-      .setTimeout(200)
+      .get('/delay/6')
+      .setTimeout(5)
 
     await expect(req.invoke()).to.be.eventually.rejectedWith(FluentRequestTimeoutError)
   })
 
   it('should return response normally when the timeout is not exceeded', async () => {
     const res = await fluentlyFetch(uri)
-      .get('/delay/100')
-      .setTimeout(200)
+      .get('/delay/1')
+      .setTimeout(10)
 
     expect(res).to.be.ok
     expect(res).to.have.status(200)

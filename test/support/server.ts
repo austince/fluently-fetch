@@ -20,7 +20,7 @@ app.all('/echo', bodyParser.json(), (req, res) => {
 })
 
 app.all('/error', (req, res) => {
-  throw new Error('Error requested')
+  res.sendStatus(HttpStatus.INTERNAL_SERVER_ERROR)
 })
 
 export default app
