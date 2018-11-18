@@ -32,7 +32,7 @@ export type HttpApp = (request: IncomingMessage, response: ServerResponse) => vo
 
 export type FluentRequestPlugin = (req: FluentRequest) => FluentRequest
 
-export class FluentRequest extends Request {
+export class FluentRequest extends Request implements PromiseLike<Response> {
   server: Server | undefined
   url: string
   credentials: RequestCredentials
@@ -84,7 +84,7 @@ export class FluentRequest extends Request {
     return this
   }
 
-  clone(overrides: FluentRequestInit = {}) {
+  clone(overrides: FluentRequestInit = {}): FluentRequest {
     const initOptions = Object.assign({
       method: this.method,
       headers: this.headers,
@@ -112,42 +112,42 @@ export class FluentRequest extends Request {
     return cloned
   }
 
-  private setMethodAndPath(method: string, pathname: string) {
+  private setMethodAndPath(method: string, pathname: string): FluentRequest {
     return this.clone({
       method,
       url: assignUrl(this.url, { pathname }),
     })
   }
 
-  get(pathname: string) {
+  get(pathname: string): FluentRequest {
     return this.setMethodAndPath('GET', pathname)
   }
 
-  put(pathname: string) {
+  put(pathname: string): FluentRequest {
     return this.setMethodAndPath('PUT', pathname)
   }
 
-  patch(pathname: string) {
+  patch(pathname: string): FluentRequest {
     return this.setMethodAndPath('PATCH', pathname)
   }
 
-  post(pathname: string) {
+  post(pathname: string): FluentRequest {
     return this.setMethodAndPath('POST', pathname)
   }
 
-  delete(pathname: string) {
+  delete(pathname: string): FluentRequest {
     return this.setMethodAndPath('DELETE', pathname)
   }
 
-  del(pathname: string) {
+  del(pathname: string): FluentRequest {
     return this.delete(pathname)
   }
 
-  head(pathname: string) {
+  head(pathname: string): FluentRequest {
     return this.setMethodAndPath('HEAD', pathname)
   }
 
-  options(pathname: string) {
+  options(pathname: string): FluentRequest {
     return this.setMethodAndPath('OPTIONS', pathname)
   }
 
@@ -332,13 +332,22 @@ export class FluentRequest extends Request {
     })
   }
 
-  async then(resolve: Function, reject: Function) {
+  async then<TResult1 = Response, TResult2 = never> (
+    resolve?: ((value: Response) => TResult1 | PromiseLike<TResult1>) | undefined | null,
+    reject?: ((reason: any) => TResult2 | PromiseLike<TResult2>) | undefined | null)
+  : Promise<TResult1 | TResult2> {
+    let res
     try {
-      const res = await this.invoke()
-      resolve(res)
+      res = await this.invoke()
+      if (resolve) {
+        return resolve(res)
+      }
     } catch (err) {
-      reject(err)
+      if (reject) {
+        return reject(err)
+      }
     }
+    return res
   }
 
   end(handler: (err: Error|null, res?: Response) => any) {
