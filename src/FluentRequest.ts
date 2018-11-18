@@ -32,7 +32,7 @@ export type HttpApp = (request: IncomingMessage, response: ServerResponse) => vo
 
 export type FluentRequestPlugin = (req: FluentRequest) => FluentRequest
 
-export class FluentRequest extends Request implements PromiseLike<Response> {
+export class FluentRequest extends Request {
   server: Server | undefined
   url: string
   credentials: RequestCredentials
@@ -151,12 +151,16 @@ export class FluentRequest extends Request implements PromiseLike<Response> {
     return this.setMethodAndPath('OPTIONS', pathname)
   }
 
-  set(key: object | string, value: string) {
+  set(key: object | string, value?: string) {
     if (typeof key === 'object') {
-      for (const [objKey, value] of Object.entries(key)) {
-        this.headers.set(objKey, value)
+      for (const [objKey, objVal] of Object.entries(key)) {
+        this.headers.set(objKey, objVal)
       }
     } else if (typeof key === 'string') {
+      if (value === undefined) {
+        throw new TypeError('value must be defined.')
+      }
+
       this.headers.set(key, value)
     }
     return this
