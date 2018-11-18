@@ -10,7 +10,7 @@ app.all('/delay/:amount', (req, res) => {
   }, amount)
 })
 
-app.all('/echo', bodyParser.json(), (req, res) => {
+app.all('/echo', bodyParser.urlencoded({ extended: true }), bodyParser.json(), (req, res) => {
   res.json({
     headers: req.headers,
     body: req.body,

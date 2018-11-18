@@ -292,9 +292,11 @@ export class FluentRequest extends Request {
     // Either overwrite or append to the body
     if (typeof this.rawBody === 'string') {
       // Concatenate form data
-      this.rawBody = `${this.rawBody}&`
+      this.rawBody = `${this.rawBody}&${data}`
     } else if (typeof FormData !== 'undefined' && this.rawBody instanceof FormData) {
       this.rawBody = data
+    } else if (Array.isArray(this.rawBody) && Array.isArray(data)) {
+      this.rawBody.push(...data)
     } else if (typeof this.rawBody === 'object') {
       this.rawBody = Object.assign(this.rawBody, data)
     } else {
