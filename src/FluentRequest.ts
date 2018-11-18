@@ -300,7 +300,7 @@ export class FluentRequest extends Request implements PromiseLike<Response> {
     return this.type(newType)
   }
 
-  protected async invoke(): Promise<Response> {
+  async invoke(): Promise<Response> {
     const bodyContent = await this.reqBodyPipe(this.rawBody)
     let req: FluentRequest = this // tslint:disable-line:no-this-assignment
     if (this.rawBody) {
