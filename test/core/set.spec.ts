@@ -52,9 +52,11 @@ describe('fluently-fetch set', function () {
 
     expect(res).to.be.ok
     const { headers: sentHeaders } = await res.json()
-    Object.entries(headers).forEach(([header, val]) => {
-      expect(sentHeaders).to.have.property(header)
-      expect(sentHeaders[header]).to.equal(val)
-    })
+    Object
+      .keys(headers)
+      .forEach((header) => {
+        expect(sentHeaders).to.have.property(header)
+        expect(sentHeaders[header]).to.equal(headers[header])
+      })
   })
 })

@@ -1,0 +1,15 @@
+sudo: false
+language: node_js
+node_js:
+  - "6.13.0"
+  - 8
+  - 10
+jobs:
+  include:
+    - stage: coverage
+      script: npm run test:coverage
+    - stage: lint
+      script: npm run lint
+    - stage: build
+      script: npm run build
+

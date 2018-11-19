@@ -12,7 +12,8 @@
     "lint": "tslint ./src/**/*.ts ./test/**/*.ts",
     "build": "tsc",
     "test": "nyc mocha",
-    "coverage": "nyc report --reporter=text-lcov | coveralls"
+    "pretest:coverage": "npm test",
+    "test:coverage": "nyc report --reporter=text-lcov | coveralls"
   },
   "nyc": {
     "extension": [

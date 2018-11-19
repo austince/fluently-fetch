@@ -151,30 +151,30 @@ export class FluentRequest extends Request {
     return this.setMethodAndPath('OPTIONS', pathname)
   }
 
-  set(key: object | string, value?: string) {
-    if (typeof key === 'object') {
-      for (const [objKey, objVal] of Object.entries(key)) {
-        this.headers.set(objKey, objVal)
+  set(keyOrMap: object | string, value?: string): FluentRequest {
+    if (typeof keyOrMap === 'object') {
+      for (const objKey of Object.keys(keyOrMap)) {
+        this.headers.set(objKey, keyOrMap[objKey])
       }
-    } else if (typeof key === 'string') {
+    } else if (typeof keyOrMap === 'string') {
       if (value === undefined) {
         throw new TypeError('value must be defined.')
       }
 
-      this.headers.set(key, value)
+      this.headers.set(keyOrMap, value)
     }
     return this
   }
 
-  type(type: string) {
+  type(type: string): FluentRequest {
     return this.set('Content-Type', shortHandTypes[type] || type)
   }
 
-  accept(type: string) {
+  accept(type: string): FluentRequest {
     return this.set('Accept', shortHandTypes[type] || type)
   }
 
-  query(query: string[][] | string | URLSearchParams) {
+  query(query: string[][] | string | URLSearchParams): FluentRequest {
     const queryParams = new URLSearchParams(query)
     const { searchParams } = new URL(this.url)
     for (const [key, value] of queryParams.entries()) {
@@ -186,7 +186,7 @@ export class FluentRequest extends Request {
 
   // Breaking change from the SuperAgent api
   // Sort comparator takes two tuples of form [param, value]
-  sortQuery(comparator?: (a: [string, string], b: [string, string]) => number) {
+  sortQuery(comparator?: (a: [string, string], b: [string, string]) => number): FluentRequest {
     const { searchParams } = new URL(this.url)
     const queryArr = Array.from(searchParams) as [string, string][]
     if (comparator) {
@@ -199,7 +199,7 @@ export class FluentRequest extends Request {
     return this
   }
 
-  auth(username: string, password: AuthOptions | string = '', options?: AuthOptions) {
+  auth(username: string, password: AuthOptions | string = '', options?: AuthOptions): FluentRequest {
     if (typeof password === 'object') {
       options = password as AuthOptions
       password = ''
@@ -228,14 +228,15 @@ export class FluentRequest extends Request {
     }
   }
 
-  withCredentials() {
+  withCredentials(): FluentRequest {
     this.credentials = 'include'
     return this
   }
 
-  ok(filter: (res: Response) => boolean) {
+  ok(filter: (res: Response) => boolean|Promise<Boolean>): FluentRequest {
     this.pipeRes(async (res: Response) => {
-      if (!filter(res)) {
+      const isOk = await filter(res)
+      if (!isOk) {
         throw new FluentResponseError(res)
       }
       return res
@@ -243,7 +244,7 @@ export class FluentRequest extends Request {
     return this
   }
 
-  setTimeout(amount: number | { response?: number, deadline?: number }) {
+  setTimeout(amount: number | { response?: number, deadline?: number }): FluentRequest {
     if (typeof amount === 'object') {
       if (amount.deadline !== undefined) {
         throw new TypeError('Deadline timeout is not supported.')
@@ -255,7 +256,7 @@ export class FluentRequest extends Request {
     return this
   }
 
-  serialize(fn: (body: any) => any | Promise<any>) {
+  serialize(fn: (body: any) => any | Promise<any>): FluentRequest {
     this.pipeBody(async body => fn(body))
     return this
   }
@@ -276,7 +277,7 @@ export class FluentRequest extends Request {
     // deprecate
   }
 
-  send(data: string | object) {
+  send(data: string | object): FluentRequest {
     let newType = this.headers.get('Content-Type')
     if (!newType) {
       if (typeof data === 'string') {

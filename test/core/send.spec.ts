@@ -32,8 +32,8 @@ describe('fluently-fetch send', function () {
     const req = fluentlyFetch(uri)
       .post('/echo')
 
-    Object.entries(data)
-      .forEach(([key, val]) => req.send(`${key}=${val}`))
+    Object.keys(data)
+      .forEach(key => req.send(`${key}=${data[key]}`))
 
     const res = await req
 
