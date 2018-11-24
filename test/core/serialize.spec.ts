@@ -9,9 +9,8 @@ describe('fluently-fetch serialize', function () {
   this.timeout(10000)
 
   let uri
-  let sandbox
+  const sandbox = setupSandbox()
   before(async () => {
-    sandbox = setupSandbox()
     uri = await getBaseUri()
   })
 
@@ -48,6 +47,7 @@ describe('fluently-fetch serialize', function () {
         .send(input)
         .serialize(serializer)
 
+      expect(res).to.be.ok
       const { body } = await res.json()
       expect(body).to.deep.equal(output)
       expect(serializer).to.have.been.calledOnceWithExactly(input)
@@ -60,5 +60,15 @@ describe('fluently-fetch serialize', function () {
 
   context('async serialize function', () => {
     runTestsForSerializer(async body => serializeFn(body))
+  })
+
+  it('should not serialize when there is no body present', async () => {
+    const serializer = sandbox.spy(body => body)
+    const res = await fluentlyFetch(uri)
+      .post('/echo')
+      .serialize(serializer)
+
+    expect(res).to.be.ok
+    expect(serializer).to.not.have.been.called
   })
 })
