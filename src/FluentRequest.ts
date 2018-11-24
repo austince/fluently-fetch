@@ -308,9 +308,9 @@ export class FluentRequest extends Request {
   }
 
   async invoke(): Promise<Response> {
-    const bodyContent = await this.reqBodyPipe(this.rawBody)
     let req: FluentRequest = this // tslint:disable-line:no-this-assignment
-    if (this.rawBody) {
+    if (this.rawBody !== undefined) {
+      const bodyContent = await this.reqBodyPipe(this.rawBody)
       req = this.clone({ body: bodyContent })
     }
 
