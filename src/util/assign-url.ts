@@ -11,7 +11,6 @@ interface URLParts {
   port?: string;
   protocol?: string;
   search?: string;
-  searchParams?: URLSearchParams;
   username?: string;
 }
 

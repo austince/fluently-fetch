@@ -27,20 +27,20 @@ describe('fluently-fetch serialize', function () {
   const data = [
     {
       input: { hey: 'paul' },
-      output: { hey: 'jude' },
+      expected: { hey: 'jude' },
     },
     {
       input: { hey: 'paul', sad: false },
-      output: { hey: 'jude', sad: false },
+      expected: { hey: 'jude', sad: false },
     },
     {
       input: 'sad=am-not',
-      output: { sad: 'am-not', hey: 'jude' },
+      expected: { sad: 'am-not', hey: 'jude' },
     },
   ]
 
   function runTestsForSerializer(fn: (any) => any | Promise<any>) {
-    data.forEach(({ input, output }) => it(`should serialize '${input}'`, async () => {
+    data.forEach(({ input, expected }) => it(`should serialize '${input}'`, async () => {
       const serializer = sandbox.spy(fn)
       const res = await fluentlyFetch(uri)
         .post('/echo')
@@ -49,7 +49,7 @@ describe('fluently-fetch serialize', function () {
 
       expect(res).to.be.ok
       const { body } = await res.json()
-      expect(body).to.deep.equal(output)
+      expect(body).to.deep.equal(expected)
       expect(serializer).to.have.been.calledOnceWithExactly(input)
     }))
   }

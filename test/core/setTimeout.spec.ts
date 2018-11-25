@@ -18,7 +18,7 @@ describe('fluently-fetch setTimeout', function () {
       .get('/delay/6')
       .setTimeout(5)
 
-    await expect(req.invoke()).to.be.eventually.rejectedWith(FluentRequestTimeoutError)
+    await expect(req).to.be.eventually.rejectedWith(FluentRequestTimeoutError)
   })
 
   it('should return response normally when the timeout is not exceeded', async () => {
@@ -32,6 +32,6 @@ describe('fluently-fetch setTimeout', function () {
 
   it('should reject deprecated parameters', () => {
     const req = fluentlyFetch(uri)
-    expect(() => req.setTimeout({ deadline: 10 })).to.throw(TypeError)
+    expect(() => req.setTimeout({ response: 10, deadline: 10 })).to.throw(TypeError)
   })
 })

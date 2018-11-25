@@ -1,6 +1,7 @@
 import { Server } from 'net'
 import { IncomingMessage, ServerResponse } from 'http'
 import assignUrl from './util/assign-url'
+import assignFormData from './util/assign-form-data'
 import serverAddress from './util/server-address'
 import shortHandTypes from './util/short-hand-types'
 import base64Encode from './util/base64-encode'
@@ -174,13 +175,13 @@ export class FluentRequest extends Request {
     return this.set('Accept', shortHandTypes[type] || type)
   }
 
-  query(query: string[][] | string | URLSearchParams): FluentRequest {
+  query(query: string[][] | string | URLSearchParams| { [key: string]: any }): FluentRequest {
     const queryParams = new URLSearchParams(query)
     const { searchParams } = new URL(this.url)
     for (const [key, value] of queryParams.entries()) {
       searchParams.set(key, value)
     }
-    this.url = assignUrl(this.url, { searchParams })
+    this.url = assignUrl(this.url, { search: searchParams.toString() })
     return this
   }
 
@@ -195,7 +196,7 @@ export class FluentRequest extends Request {
       queryArr.sort()
     }
     const sortedParams = new URLSearchParams(queryArr)
-    this.url = assignUrl(this.url, { searchParams: sortedParams })
+    this.url = assignUrl(this.url, { search: sortedParams.toString() })
     return this
   }
 
@@ -233,7 +234,7 @@ export class FluentRequest extends Request {
     return this
   }
 
-  ok(filter: (res: Response) => boolean|Promise<Boolean>): FluentRequest {
+  ok(filter: (res: Response) => boolean | Promise<Boolean>): FluentRequest {
     this.pipeRes(async (res: Response) => {
       const isOk = await filter(res)
       if (!isOk) {
@@ -244,7 +245,19 @@ export class FluentRequest extends Request {
     return this
   }
 
-  setTimeout(amount: number | { response?: number, deadline?: number }): FluentRequest {
+  setTimeout(amount: number)
+  /**
+   * @deprecated
+   * @param timoutOptions
+   */
+  setTimeout(timoutOptions: { response: number })
+  /**
+   * @deprecated
+   * @param timoutOptions
+   */
+  setTimeout(timoutOptions: { response: number, deadline?: number })
+
+  setTimeout(amount: number | { response: number, deadline?: number }): FluentRequest {
     if (typeof amount === 'object') {
       if (amount.deadline !== undefined) {
         throw new TypeError('Deadline timeout is not supported.')
@@ -261,6 +274,14 @@ export class FluentRequest extends Request {
     return this
   }
 
+  field() {
+    // Todo
+  }
+
+  attach() {
+    // Todo
+  }
+
   retry() {
     // todo
   }
@@ -271,10 +292,6 @@ export class FluentRequest extends Request {
 
   redirects(count: number) {
     // todo
-  }
-
-  responseType(type: 'blob' | 'arraybuffer') {
-    // deprecate
   }
 
   send(data: string | object): FluentRequest {
@@ -291,14 +308,14 @@ export class FluentRequest extends Request {
     }
 
     // Either overwrite or append to the body
-    if (typeof this.rawBody === 'string') {
-      // Concatenate form data
+    if (typeof this.rawBody === 'string' && typeof data === 'string') {
+      // Concatenate string form data
       this.rawBody = `${this.rawBody}&${data}`
-    } else if (typeof FormData !== 'undefined' && this.rawBody instanceof FormData) {
-      this.rawBody = data
+    } else if (typeof FormData !== 'undefined' && data instanceof FormData) {
+      this.rawBody = assignFormData(this.rawBody, data)
     } else if (Array.isArray(this.rawBody) && Array.isArray(data)) {
       this.rawBody.push(...data)
-    } else if (typeof this.rawBody === 'object') {
+    } else if (typeof this.rawBody === 'object' && typeof data === 'object') {
       this.rawBody = Object.assign(this.rawBody, data)
     } else {
       this.rawBody = data
@@ -307,7 +324,7 @@ export class FluentRequest extends Request {
     return this.type(newType)
   }
 
-  async invoke(): Promise<Response> {
+  private async invoke(): Promise<Response> {
     let req: FluentRequest = this // tslint:disable-line:no-this-assignment
     if (this.rawBody !== undefined) {
       const bodyContent = await this.reqBodyPipe(this.rawBody)
@@ -339,10 +356,10 @@ export class FluentRequest extends Request {
     })
   }
 
-  async then<TResult1 = Response, TResult2 = never> (
+  async then<TResult1 = Response, TResult2 = never>(
     resolve?: ((value: Response) => TResult1 | PromiseLike<TResult1>) | undefined | null,
     reject?: ((reason: any) => TResult2 | PromiseLike<TResult2>) | undefined | null)
-  : Promise<TResult1 | TResult2> {
+    : Promise<TResult1 | TResult2> {
     let res
     try {
       res = await this.invoke()
@@ -357,7 +374,7 @@ export class FluentRequest extends Request {
     return res
   }
 
-  end(handler: (err: Error|null, res?: Response) => any) {
+  end(handler: (err: Error | null, res?: Response) => any) {
     return this.then(
       res => handler(null, res),
       err => handler(err),

@@ -17,6 +17,7 @@ app.all('/echo', bodyParser.urlencoded({ extended: true }), bodyParser.json(), (
     body: req.body,
     method: req.method,
     url: req.originalUrl,
+    query: req.query,
   })
 })
 
