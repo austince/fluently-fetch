@@ -1,6 +1,7 @@
 import * as express from 'express'
 import * as HttpStatus from 'http-status-codes'
 import * as bodyParser from 'body-parser'
+import * as basicAuth from 'basic-auth'
 
 const app = express()
 
@@ -27,6 +28,17 @@ app.all('/status/:statusCode', (req, res) => {
 
 app.all('/error', (req, res) => {
   res.sendStatus(HttpStatus.INTERNAL_SERVER_ERROR)
+})
+
+app.all('/auth/:username/:password', (req, res) => {
+  const creds = basicAuth(req)
+  if (!creds) {
+    res.sendStatus(HttpStatus.UNAUTHORIZED)
+  } else if (creds.name !== req.params.username || creds.pass !== req.params.password) {
+    res.sendStatus(HttpStatus.FORBIDDEN)
+  } else {
+    res.sendStatus(HttpStatus.OK)
+  }
 })
 
 export default app

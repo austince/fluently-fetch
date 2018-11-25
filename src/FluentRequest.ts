@@ -200,7 +200,7 @@ export class FluentRequest extends Request {
     return this
   }
 
-  auth(username: string, password: AuthOptions | string = '', options?: AuthOptions): FluentRequest {
+  setAuth(usernameOrToken: string, password: AuthOptions | string = '', options?: AuthOptions): FluentRequest {
     if (typeof password === 'object') {
       options = password as AuthOptions
       password = ''
@@ -214,14 +214,14 @@ export class FluentRequest extends Request {
 
     switch (options.type) {
       case 'basic':
-        return this.set('Authorization', `Basic ${username}:${password}`)
+        return this.set('Authorization', `Basic ${base64Encode(`${usernameOrToken}:${password}`)}`)
       case 'bearer':
-        return this.set('Authorization', `Bearer ${base64Encode(`${username}:${password}`)}`)
+        return this.set('Authorization', `Bearer ${usernameOrToken}`)
       case 'auto':
         return this.clone({
           url: assignUrl(this.url, {
-            username,
             password,
+            username: usernameOrToken,
           }),
         })
       default:
@@ -374,6 +374,10 @@ export class FluentRequest extends Request {
     return res
   }
 
+  /**
+   * @deprecated
+   * @param handler
+   */
   end(handler: (err: Error | null, res?: Response) => any) {
     return this.then(
       res => handler(null, res),

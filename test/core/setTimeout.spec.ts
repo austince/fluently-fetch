@@ -1,4 +1,5 @@
 import * as chai from 'chai'
+import * as HttpStatus from 'http-status-codes'
 import fluentlyFetch from '../../src/fluently-fetch'
 import FluentRequestTimeoutError from '../../src/errors/FluentRequestTimeoutError'
 import getBaseUri from '../support/get-base-uri'
@@ -27,7 +28,16 @@ describe('fluently-fetch setTimeout', function () {
       .setTimeout(10)
 
     expect(res).to.be.ok
-    expect(res).to.have.status(200)
+    expect(res).to.have.status(HttpStatus.OK)
+  })
+
+  it('should support the deprecated possible', async () => {
+    const res = await fluentlyFetch(uri)
+      .get('/delay/1')
+      .setTimeout(10)
+
+    expect(res).to.be.ok
+    expect(res).to.have.status(HttpStatus.OK)
   })
 
   it('should reject deprecated parameters', () => {
