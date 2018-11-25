@@ -23,6 +23,10 @@ describe('fluently-fetch query', function () {
       expected: { hey: 'there' },
     },
     {
+      input: 'hey=there&you=kids',
+      expected: { hey: 'there', you: 'kids' },
+    },
+    {
       input: { hey: 'there', you: 'kids' },
       expected: { hey: 'there', you: 'kids' },
     },
