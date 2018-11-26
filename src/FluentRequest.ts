@@ -299,7 +299,7 @@ export class FluentRequest extends Request {
     if (!newType) {
       if (typeof data === 'string') {
         newType = shortHandTypes.urlencoded
-      } else if (typeof FormData !== 'undefined' && this.rawBody instanceof FormData) {
+      } else if (typeof FormData !== 'undefined' && data instanceof FormData) {
         newType = shortHandTypes.multipart
       } else {
         // Default to json

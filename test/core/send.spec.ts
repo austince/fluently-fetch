@@ -19,11 +19,25 @@ describe('fluently-fetch send', function () {
       .send(data)
 
     expect(res).to.be.ok
-    const { body } = await res.json()
+    const { body, headers } = await res.json()
     expect(body).to.deep.equal(data)
+    expect(headers).to.have.property('content-type', 'application/json')
   })
 
-  it('should send concatenated encoded form data', async () => {
+  it('should merge json data', async () => {
+    const data = { name: 'jobi' }
+    const other = { job: "jobin' around" }
+    const res = await fluentlyFetch(uri)
+      .post('/echo')
+      .send(data)
+      .send(other)
+
+    expect(res).to.be.ok
+    const { body } = await res.json()
+    expect(body).to.deep.equal(Object.assign({}, data, other))
+  })
+
+  it('should merge concatenated encoded form data', async () => {
     const data = {
       form: 'true',
       cats: '1',
@@ -39,8 +53,7 @@ describe('fluently-fetch send', function () {
 
     expect(res).to.be.ok
     const { body, headers } = await res.json()
-    expect(headers).to.have.property('content-type')
-    expect(headers['content-type']).to.equal('application/x-www-form-urlencoded')
+    expect(headers).to.have.property('content-type', 'application/x-www-form-urlencoded')
     expect(body).to.deep.equal(data)
   })
 })

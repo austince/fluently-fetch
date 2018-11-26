@@ -31,10 +31,10 @@ describe('fluently-fetch setTimeout', function () {
     expect(res).to.have.status(HttpStatus.OK)
   })
 
-  it('should support the deprecated possible', async () => {
+  it('should support deprecated options when possible', async () => {
     const res = await fluentlyFetch(uri)
       .get('/delay/1')
-      .setTimeout(10)
+      .setTimeout({ response: 10 })
 
     expect(res).to.be.ok
     expect(res).to.have.status(HttpStatus.OK)
