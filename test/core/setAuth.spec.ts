@@ -1,8 +1,7 @@
 import * as chai from 'chai'
 import * as HttpStatus from 'http-status-codes'
 import fluentlyFetch from '../../src/fluently-fetch'
-import getBaseUri from '../support/get-base-uri'
-import URL from '../../src/URL'
+import getBaseUri from '../util/get-base-uri'
 
 const { expect } = chai
 
@@ -38,22 +37,6 @@ describe('fluently-fetch setAuth', function () {
       .get(`/auth/${username}/${password}`)
       .setAuth(username, password)
 
-    expect(res).to.be.ok
-    expect(res).to.have.status(HttpStatus.OK)
-  })
-
-  it('should use auto auth when specified', async () => {
-    const username = 'shaggy'
-    const password = 'farOutMan'
-    const req = fluentlyFetch(uri)
-      .get(`/auth/${username}/${password}`)
-      .setAuth(username, password, { type: 'auto' })
-
-    const reqURL = new URL(req.url)
-    expect(reqURL.username).to.equal(username)
-    expect(reqURL.password).to.equal(password)
-
-    const res = await req
     expect(res).to.be.ok
     expect(res).to.have.status(HttpStatus.OK)
   })

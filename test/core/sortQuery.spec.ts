@@ -1,6 +1,6 @@
 import * as chai from 'chai'
 import fluentlyFetch from '../../src/fluently-fetch'
-import getBaseUri from '../support/get-base-uri'
+import getBaseUri from '../util/get-base-uri'
 
 const { expect } = chai
 

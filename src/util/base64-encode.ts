@@ -1,1 +1,1 @@
-export default typeof btoa !== 'undefined' ? btoa : input => Buffer.from(input).toString('base64')
+export default typeof btoa !== 'undefined' ? string => btoa(string) : input => Buffer.from(input).toString('base64')

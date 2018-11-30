@@ -1,9 +1,11 @@
 import { Server } from 'net'
-import { HttpApp, FluentRequest, FluentRequestInit } from './FluentRequest'
+import FluentRequest, { HttpApp, FluentRequestInit } from './FluentRequest'
 
-export { FluentRequest, FluentRequestInit } from './FluentRequest'
+if (typeof fetch === 'undefined') {
+  require('isomorphic-fetch')
+}
 
-export interface FluentlyFetch {
+interface FluentlyFetch {
   (app?: Server | HttpApp | string, initOptions?: FluentRequestInit): FluentRequest
 
   get(app?: Server | HttpApp | string, initOptions?: FluentRequestInit): FluentRequest
@@ -48,3 +50,4 @@ const fluentlyFetch: FluentlyFetch = fetcher as FluentlyFetch
 fluentlyFetch.del = fluentlyFetch.delete
 
 export default fluentlyFetch
+export { FluentRequest, FluentRequestInit, FluentlyFetch }

@@ -2,7 +2,7 @@ import * as chai from 'chai'
 import * as HttpStatus from 'http-status-codes'
 import fluentlyFetch from '../../src/fluently-fetch'
 import FluentRequestTimeoutError from '../../src/errors/FluentRequestTimeoutError'
-import getBaseUri from '../support/get-base-uri'
+import getBaseUri from '../util/get-base-uri'
 
 const { expect } = chai
 
@@ -16,8 +16,8 @@ describe('fluently-fetch setTimeout', function () {
 
   it('should error when request exceeds timeout', async () => {
     const req = fluentlyFetch(uri)
-      .get('/delay/6')
-      .setTimeout(5)
+      .get('/delay/2')
+      .setTimeout(1)
 
     await expect(req).to.be.eventually.rejectedWith(FluentRequestTimeoutError)
   })
@@ -25,16 +25,16 @@ describe('fluently-fetch setTimeout', function () {
   it('should return response normally when the timeout is not exceeded', async () => {
     const res = await fluentlyFetch(uri)
       .get('/delay/1')
-      .setTimeout(10)
+      .setTimeout(20)
 
     expect(res).to.be.ok
     expect(res).to.have.status(HttpStatus.OK)
   })
 
-  it('should support deprecated options when possible', async () => {
+  it('should use deprecated parameters when possible', async () => {
     const res = await fluentlyFetch(uri)
       .get('/delay/1')
-      .setTimeout({ response: 10 })
+      .setTimeout({ response: 20 })
 
     expect(res).to.be.ok
     expect(res).to.have.status(HttpStatus.OK)

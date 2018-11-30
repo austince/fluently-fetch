@@ -1,7 +1,7 @@
 import * as chai from 'chai'
 import fluentlyFetch from '../../src/fluently-fetch'
 import FluentRequestTimeoutError from '../../src/errors/FluentRequestTimeoutError'
-import getBaseUri from '../support/get-base-uri'
+import getBaseUri from '../util/get-base-uri'
 import { head } from 'shelljs'
 
 const { expect } = chai

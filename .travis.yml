@@ -1,13 +1,29 @@
-sudo: false
+sudo: true
 language: node_js
 node_js:
-  - "6.13.0"
+  - "6.13.0" # The first node version backported with the WHATWG URL APIs
   - 8
   - 10
+addons:
+  chrome: stable
+  firefox: latest
+before_script:
+  - export DISPLAY=:99.0
+  - sh -e /etc/init.d/xvfb start
+after_success:
+  - codecov -f coverage/*.json
+
 jobs:
   include:
-    - stage: coverage
-      script: npm run test:coverage
+    - stage: Test Chrome
+      script: npm run test:browser -- --browsers ChromeHeadless
+      after_success:
+        - codecov -f coverage/headlesschrome/*.json
+    - stage: Test Firefox
+      script: npm run test:browser -- --browsers FirefoxHeadless
+      after_success:
+        # since it is a custom browser launcher, registers as just the base firefox name
+        - codecov -f coverage/firefox/*.json
     - stage: lint
       script: npm run lint
     - stage: build

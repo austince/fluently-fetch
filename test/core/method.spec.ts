@@ -1,12 +1,11 @@
 import * as chai from 'chai'
 import fluentlyFetch from '../../src/fluently-fetch'
-import FluentRequestTimeoutError from '../../src/errors/FluentRequestTimeoutError'
-import getBaseUri from '../support/get-base-uri'
+import getBaseUri from '../util/get-base-uri'
 
 const { expect } = chai
 
 describe('fluently-fetch method', function () {
-  this.timeout(10000)
+  this.timeout(5000)
 
   let uri
   before(async () => {
@@ -26,7 +25,6 @@ describe('fluently-fetch method', function () {
     'post',
     'patch',
     'delete',
-    'options',
   ].forEach(method => it(`should send ${method.toUpperCase()} requests`, async () => {
     const res = await fluentlyFetch(uri)[method]('/echo')
     expect(res).to.be.ok

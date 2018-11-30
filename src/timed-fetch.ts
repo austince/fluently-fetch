@@ -1,4 +1,3 @@
-import fetch from './fetch'
 import FluentRequestTimeoutError from './errors/FluentRequestTimeoutError'
 
 export default (req: Request, timeout: number) => {

@@ -1,4 +1,4 @@
-import { URL } from 'url';
+import URL from '../URL';
 
 interface URLParts {
   hash?: string;

@@ -8,9 +8,12 @@ import base64Encode from './util/base64-encode'
 import startServer from './util/start-server'
 import FluentResponseError from './errors/FluentResponseError'
 import timedFetch from './timed-fetch'
-import fetch from './fetch'
 import URL from './URL'
 import URLSearchParams from './URLSearchParams'
+
+if (typeof fetch === 'undefined') {
+  require('isomorphic-fetch')
+}
 
 function serializeBody(body) {
   let serialized = body
@@ -26,67 +29,60 @@ export interface FluentRequestInit extends RequestInit {
 }
 
 export interface AuthOptions {
-  type: 'basic' | 'auto' | 'bearer'
+  type: 'basic' | 'bearer'
 }
 
 export type HttpApp = (request: IncomingMessage, response: ServerResponse) => void
 
 export type FluentRequestPlugin = (req: FluentRequest) => FluentRequest
 
-export class FluentRequest extends Request {
-  server: Server | undefined
-  url: string
-  credentials: RequestCredentials
+export default class FluentRequest extends Request {
+  protected server?: Server
   /**
    * Body before it is serialized for the request.
    */
-  private rawBody: any
-  private pluginPipe
-  private responsePipe: (res: Response) => Promise<Response>
-  private reqBodyPipe
-  private timeoutMs: number | undefined
+  protected rawBody?: any
+  protected pluginPipe
+  protected responsePipe: (res: Response) => Promise<Response>
+  protected reqBodyPipe
+  protected timeoutMs: number | undefined
 
-  constructor(app: Server | HttpApp | string = '', initOptions: FluentRequestInit = {}) {
-    let url = app
-    let server
-    if (typeof app !== 'string') {
-      server = startServer(app)
-      url = initOptions.url || serverAddress(server)
+  constructor(
+    input: FluentRequest | Server | HttpApp | string = 'http://localhost',
+    initOptions: FluentRequestInit = {},
+  ) {
+    let url = input
+    const defaults: any = {
+      responsePipe: async (res: Response) => res,
+      pluginPipe: (req: FluentRequest) => req,
+      reqBodyPipe: async body => serializeBody(body),
+      server: undefined,
     }
 
-    if (!url) {
-      // Default to localhost if nothing is specified
-      url = 'http://localhost'
+    if (input instanceof FluentRequest) {
+      initOptions = input.initOptions
+      url = input.url
+      defaults.responsePipe = input.responsePipe
+      defaults.pluginPipe = input.pluginPipe
+      defaults.reqBodyPipe = input.reqBodyPipe
+    } else if (typeof input !== 'string') {
+      defaults.server = startServer(input)
+      url = initOptions.url || serverAddress(defaults.server)
+    }
+
+    if (!initOptions.credentials) {
+      initOptions.credentials = 'same-origin'
     }
 
     super(url as string, initOptions)
-    this.server = server
-    this.url = url as string
-    this.credentials = 'same-origin'
-
-    this.responsePipe = async res => res
-    this.pluginPipe = req => req
-    this.reqBodyPipe = async body => serializeBody(body)
+    this.server = defaults.server
+    this.responsePipe = defaults.responsePipe
+    this.pluginPipe = defaults.pluginPipe
+    this.reqBodyPipe = defaults.reqBodyPipe
   }
 
-  private pipeBody(pipe: (body: any) => Response | Promise<any>) {
-    const currentPipe = this.reqBodyPipe
-    this.reqBodyPipe = body => (async body => pipe(body))(body).then(currentPipe)
-  }
-
-  private pipeRes(pipe: (res: Response) => Response | Promise<Response>) {
-    const currentPipe = this.responsePipe
-    this.responsePipe = res => currentPipe(res).then(pipe)
-  }
-
-  use(plugin: FluentRequestPlugin): FluentRequest {
-    const currentPipe = this.pluginPipe
-    this.pluginPipe = req => plugin(currentPipe(req))
-    return this
-  }
-
-  clone(overrides: FluentRequestInit = {}): FluentRequest {
-    const initOptions = Object.assign({
+  protected get initOptions(): RequestInit {
+    return {
       method: this.method,
       headers: this.headers,
       mode: this.mode,
@@ -96,13 +92,36 @@ export class FluentRequest extends Request {
       referrer: this.referrer,
       integrity: this.integrity,
       body: this.body,
-    }, overrides)
+    }
+  }
+
+  protected pipeBody(pipe: (body: any) => Response | Promise<any>): FluentRequest {
+    const currentPipe = this.reqBodyPipe
+    this.reqBodyPipe = body => (async body => pipe(body))(body).then(currentPipe)
+    return this
+  }
+
+  protected pipeRes(pipe: (res: Response) => Response | Promise<Response>): FluentRequest {
+    const currentPipe = this.responsePipe
+    this.responsePipe = res => currentPipe(res).then(pipe)
+    return this
+  }
+
+  use(plugin: FluentRequestPlugin): FluentRequest {
+    const currentPipe = this.pluginPipe
+    this.pluginPipe = req => plugin(currentPipe(req))
+    return this
+  }
+
+  clone(overrides: FluentRequestInit = {}): FluentRequest {
+    const initOptions = Object.assign(this.initOptions, overrides)
     let cloned
     if (this.server) {
       initOptions.url = overrides.url || this.url
       cloned = new FluentRequest(this.server, initOptions)
     } else {
-      cloned = new FluentRequest(this.url, initOptions)
+      const url = overrides.url || this.url
+      cloned = new FluentRequest(url, initOptions)
     }
 
     cloned.responsePipe = this.responsePipe
@@ -181,8 +200,9 @@ export class FluentRequest extends Request {
     for (const [key, value] of queryParams.entries()) {
       searchParams.set(key, value)
     }
-    this.url = assignUrl(this.url, { search: searchParams.toString() })
-    return this
+    return this.clone({
+      url: assignUrl(this.url, { search: searchParams.toString() }),
+    })
   }
 
   // Breaking change from the SuperAgent api
@@ -196,8 +216,9 @@ export class FluentRequest extends Request {
       queryArr.sort()
     }
     const sortedParams = new URLSearchParams(queryArr)
-    this.url = assignUrl(this.url, { search: sortedParams.toString() })
-    return this
+    return this.clone({
+      url: assignUrl(this.url, { search: sortedParams.toString() }),
+    })
   }
 
   setAuth(usernameOrToken: string, password: AuthOptions | string = '', options?: AuthOptions): FluentRequest {
@@ -217,21 +238,21 @@ export class FluentRequest extends Request {
         return this.set('Authorization', `Basic ${base64Encode(`${usernameOrToken}:${password}`)}`)
       case 'bearer':
         return this.set('Authorization', `Bearer ${usernameOrToken}`)
-      case 'auto':
-        return this.clone({
-          url: assignUrl(this.url, {
-            password,
-            username: usernameOrToken,
-          }),
-        })
       default:
         throw new TypeError('Auth type must be either `basic`, `auto`, or `bearer`.')
     }
   }
 
+  setMode(mode: RequestMode): FluentRequest {
+    return this.clone({
+      mode,
+    })
+  }
+
   withCredentials(): FluentRequest {
-    this.credentials = 'include'
-    return this
+    return this.clone({
+      credentials: 'include',
+    })
   }
 
   ok(filter: (res: Response) => boolean | Promise<Boolean>): FluentRequest {
@@ -270,8 +291,7 @@ export class FluentRequest extends Request {
   }
 
   serialize(fn: (body: any) => any | Promise<any>): FluentRequest {
-    this.pipeBody(async body => fn(body))
-    return this
+    return this.pipeBody(async body => fn(body))
   }
 
   field() {
@@ -337,11 +357,7 @@ export class FluentRequest extends Request {
     // Apply timeout, if specified
     let res
     if (req.timeoutMs !== undefined) {
-      try {
-        res = await timedFetch(req, req.timeoutMs)
-      } catch (err) {
-        throw err
-      }
+      res = await timedFetch(req, req.timeoutMs)
     } else {
       res = await fetch(req)
     }

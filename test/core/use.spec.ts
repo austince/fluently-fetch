@@ -1,8 +1,8 @@
 import * as chai from 'chai'
 import * as HttpStatus from 'http-status-codes'
 import fluentlyFetch, { FluentRequest } from '../../src/fluently-fetch'
-import setupSandbox from '../support/setup-sandbox'
-import getBaseUri from '../support/get-base-uri'
+import setupSandbox from '../util/setup-sandbox'
+import getBaseUri from '../util/get-base-uri'
 
 const { expect } = chai
 
