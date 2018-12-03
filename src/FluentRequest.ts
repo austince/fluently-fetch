@@ -1,5 +1,7 @@
 import { Server } from 'net'
+import { ReadStream } from 'fs';
 import { IncomingMessage, ServerResponse } from 'http'
+import 'isomorphic-fetch'
 import assignUrl from './util/assign-url'
 import assignFormData from './util/assign-form-data'
 import serverAddress from './util/server-address'
@@ -10,17 +12,41 @@ import FluentResponseError from './errors/FluentResponseError'
 import timedFetch from './timed-fetch'
 import URL from './URL'
 import URLSearchParams from './URLSearchParams'
-
-if (typeof fetch === 'undefined') {
-  require('isomorphic-fetch')
-}
+import FormData from './FormData'
 
 function serializeBody(body) {
   let serialized = body
-  if (body && typeof body !== 'string') {
+  if (body && typeof body !== 'string' && !(body instanceof FormData)) {
     serialized = JSON.stringify(body)
   }
   return serialized
+}
+
+function getTypeForBody(body) {
+  if (body instanceof FormData) {
+    return null
+  }
+
+  if (typeof body === 'string') {
+    return shortHandTypes.urlencoded
+  }
+
+  // Default to json
+  return shortHandTypes.json
+}
+
+function getInitOptions(req: Request): RequestInit {
+  return {
+    method: req.method,
+    headers: req.headers,
+    mode: req.mode,
+    credentials: req.credentials,
+    cache: req.cache,
+    redirect: req.redirect,
+    referrer: req.referrer,
+    integrity: req.integrity,
+    body: req.body,
+  }
 }
 
 export interface FluentRequestInit extends RequestInit {
@@ -34,8 +60,14 @@ export interface AuthOptions {
 
 export type HttpApp = (request: IncomingMessage, response: ServerResponse) => void
 
-export type FluentRequestPlugin = (req: FluentRequest) => FluentRequest
+export type Plugin = (req: FluentRequest) => FluentRequest
 
+export type FormField = string | boolean | Blob | File | ReadStream
+
+export interface FormAttachOptions {
+  filename?: string
+  contentType?: string
+}
 export default class FluentRequest extends Request {
   protected server?: Server
   /**
@@ -59,12 +91,15 @@ export default class FluentRequest extends Request {
       server: undefined,
     }
 
-    if (input instanceof FluentRequest) {
-      initOptions = input.initOptions
+    if (input instanceof Request) {
+      initOptions = getInitOptions(input)
       url = input.url
-      defaults.responsePipe = input.responsePipe
-      defaults.pluginPipe = input.pluginPipe
-      defaults.reqBodyPipe = input.reqBodyPipe
+
+      if (input instanceof FluentRequest) {
+        defaults.responsePipe = input.responsePipe
+        defaults.pluginPipe = input.pluginPipe
+        defaults.reqBodyPipe = input.reqBodyPipe
+      }
     } else if (typeof input !== 'string') {
       defaults.server = startServer(input)
       url = initOptions.url || serverAddress(defaults.server)
@@ -81,20 +116,6 @@ export default class FluentRequest extends Request {
     this.reqBodyPipe = defaults.reqBodyPipe
   }
 
-  protected get initOptions(): RequestInit {
-    return {
-      method: this.method,
-      headers: this.headers,
-      mode: this.mode,
-      credentials: this.credentials,
-      cache: this.cache,
-      redirect: this.redirect,
-      referrer: this.referrer,
-      integrity: this.integrity,
-      body: this.body,
-    }
-  }
-
   protected pipeBody(pipe: (body: any) => Response | Promise<any>): FluentRequest {
     const currentPipe = this.reqBodyPipe
     this.reqBodyPipe = body => (async body => pipe(body))(body).then(currentPipe)
@@ -107,14 +128,14 @@ export default class FluentRequest extends Request {
     return this
   }
 
-  use(plugin: FluentRequestPlugin): FluentRequest {
+  use(plugin: Plugin): FluentRequest {
     const currentPipe = this.pluginPipe
     this.pluginPipe = req => plugin(currentPipe(req))
     return this
   }
 
   clone(overrides: FluentRequestInit = {}): FluentRequest {
-    const initOptions = Object.assign(this.initOptions, overrides)
+    const initOptions = Object.assign(getInitOptions(this), overrides)
     let cloned
     if (this.server) {
       initOptions.url = overrides.url || this.url
@@ -194,7 +215,7 @@ export default class FluentRequest extends Request {
     return this.set('Accept', shortHandTypes[type] || type)
   }
 
-  query(query: string[][] | string | URLSearchParams| { [key: string]: any }): FluentRequest {
+  query(query: string[][] | string | URLSearchParams | { [key: string]: any }): FluentRequest {
     const queryParams = new URLSearchParams(query)
     const { searchParams } = new URL(this.url)
     for (const [key, value] of queryParams.entries()) {
@@ -294,65 +315,89 @@ export default class FluentRequest extends Request {
     return this.pipeBody(async body => fn(body))
   }
 
-  field() {
-    // Todo
-  }
-
-  attach() {
-    // Todo
-  }
-
-  retry() {
-    // todo
-  }
-
-  buffer() {
-    // todo
-  }
-
-  redirects(count: number) {
-    // todo
-  }
-
-  send(data: string | object): FluentRequest {
-    let newType = this.headers.get('Content-Type')
-    if (!newType) {
-      if (typeof data === 'string') {
-        newType = shortHandTypes.urlencoded
-      } else if (typeof FormData !== 'undefined' && data instanceof FormData) {
-        newType = shortHandTypes.multipart
-      } else {
-        // Default to json
-        newType = shortHandTypes.json
-      }
+  field(nameOrDict: string | { [name: string]: FormField }, val?: FormField | FormField[]): FluentRequest {
+    if (nameOrDict === undefined || nameOrDict === null) {
+      throw new TypeError(`Must supply a field name or object, not ${nameOrDict}.`)
     }
 
+    if (!(this.rawBody instanceof FormData)) {
+      this.rawBody = new FormData()
+    }
+
+    if (typeof nameOrDict === 'object') {
+      return Object.keys(nameOrDict)
+        .reduce((acc: FluentRequest, key: string) => {
+          return acc.field(key, nameOrDict[key])
+        }, this)
+    }
+
+    if (Array.isArray(val)) {
+      return val.reduce((acc: FluentRequest, item: FormField) => {
+        return acc.field(nameOrDict, item)
+      }, this)
+    }
+
+    if (val === undefined) {
+      throw new TypeError(`Must supply a value to append for field ${nameOrDict}.`)
+    }
+
+    if (typeof val === 'boolean') {
+      val = val.toString()
+    }
+
+    this.rawBody.append(nameOrDict, val)
+    return this
+  }
+
+  attach(name: string, data: Blob | Buffer | ReadStream, options: FormAttachOptions|string = {}): FluentRequest {
+    if (!(this.rawBody instanceof FormData)) {
+      this.rawBody = new FormData()
+    }
+
+    if (typeof options === 'string') {
+      options = { filename: options }
+    }
+
+    if (!options.filename && (data as ReadStream).path) {
+      options.filename = (data as ReadStream).path.toString()
+    }
+
+    this.rawBody.append(name, data, options)
+    return this
+  }
+
+  send(data: string | object | FormData | URLSearchParams): FluentRequest {
     // Either overwrite or append to the body
     if (typeof this.rawBody === 'string' && typeof data === 'string') {
       // Concatenate string form data
       this.rawBody = `${this.rawBody}&${data}`
-    } else if (typeof FormData !== 'undefined' && data instanceof FormData) {
-      this.rawBody = assignFormData(this.rawBody, data)
+    } else if (this.rawBody instanceof FormData && data instanceof FormData) {
+      this.rawBody = assignFormData(this.rawBody, data as FormData)
     } else if (Array.isArray(this.rawBody) && Array.isArray(data)) {
-      this.rawBody.push(...data)
+      this.rawBody = this.rawBody.concat(data)
     } else if (typeof this.rawBody === 'object' && typeof data === 'object') {
       this.rawBody = Object.assign(this.rawBody, data)
     } else {
       this.rawBody = data
     }
 
-    return this.type(newType)
+    return this
   }
 
   private async invoke(): Promise<Response> {
+    // Todo: move this to a out-of-class util function that fetches one of these guyz
     let req: FluentRequest = this // tslint:disable-line:no-this-assignment
-    if (this.rawBody !== undefined) {
-      const bodyContent = await this.reqBodyPipe(this.rawBody)
-      req = this.clone({ body: bodyContent })
+    if (req.rawBody !== undefined) {
+      const bodyContent = await req.reqBodyPipe(req.rawBody)
+      req = req.clone({ body: bodyContent })
+      const newType = getTypeForBody(req.rawBody)
+      if (newType) {
+        req = req.type(newType)
+      }
     }
 
     // Apply plugins
-    req = this.pluginPipe(req)
+    req = req.pluginPipe(req)
 
     // Apply timeout, if specified
     let res
@@ -361,11 +406,11 @@ export default class FluentRequest extends Request {
     } else {
       res = await fetch(req)
     }
-    res = await this.responsePipe(res)
+    res = await req.responsePipe(res)
 
     return new Promise<Response>((resolve) => {
-      if (this.server) {
-        this.server.close(() => resolve(res))
+      if (req.server) {
+        req.server.close(() => resolve(res))
       } else {
         resolve(res)
       }

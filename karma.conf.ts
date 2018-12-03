@@ -40,7 +40,7 @@ export default (config: CustomKarmaConfig) => {
     },
     singleRun: true,
     karmaTypescriptConfig: {
-      tsconfig: './tsconfig.json',
+      tsconfig: './tsconfig.test.json',
       coverageOptions: {
         instrumentation: !isDebugMode,
       },

@@ -1,10 +1,6 @@
 import { Server } from 'net'
 import FluentRequest, { HttpApp, FluentRequestInit } from './FluentRequest'
 
-if (typeof fetch === 'undefined') {
-  require('isomorphic-fetch')
-}
-
 interface FluentlyFetch {
   (app?: Server | HttpApp | string, initOptions?: FluentRequestInit): FluentRequest
 

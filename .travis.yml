@@ -4,28 +4,41 @@ node_js:
   - "6.13.0" # The first node version backported with the WHATWG URL APIs
   - 8
   - 10
-addons:
-  chrome: stable
-  firefox: latest
-before_script:
-  - export DISPLAY=:99.0
-  - sh -e /etc/init.d/xvfb start
+before_install:
+  - if [[ `npm --version` != 6* ]]; then npm install -g npm@6; fi && npm --version # Upgrade npm so it uses the lock file
+script:
+  - npm run test:node
 after_success:
-  - codecov -f coverage/*.json
+  - codecov -f coverage/*.json -F integrationnode
+
+stages:
+  - lint
+  - test
+  - build
 
 jobs:
   include:
-    - stage: Test Chrome
-      script: npm run test:browser -- --browsers ChromeHeadless
+    - stage: lint
+      script: npm run lint
+    - stage: test
+      addons:
+        chrome: stable
+      before_script:
+        - export DISPLAY=:99.0
+        - sh -e /etc/init.d/xvfb start
+      script: npm run test:browser -- --browsers ChromeHeadless -F integrationbrowser
       after_success:
-        - codecov -f coverage/headlesschrome/*.json
-    - stage: Test Firefox
+        - codecov -f coverage/headlesschrome/*.json -F integrationbrowser
+    - stage: test
+      addons:
+        firefox: latest
+      before_script:
+        - export DISPLAY=:99.0
+        - sh -e /etc/init.d/xvfb start
       script: npm run test:browser -- --browsers FirefoxHeadless
       after_success:
         # since it is a custom browser launcher, registers as just the base firefox name
-        - codecov -f coverage/firefox/*.json
-    - stage: lint
-      script: npm run lint
+        - codecov -f coverage/firefox/*.json -F browser-integration
     - stage: build
       script: npm run build
 

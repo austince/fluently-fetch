@@ -6,4 +6,4 @@ if (typeof URLSearchParams === 'undefined') {
   URLSearchParamsConstructor = URLSearchParams
 }
 
-export default URLSearchParamsConstructor;
+export default URLSearchParamsConstructor

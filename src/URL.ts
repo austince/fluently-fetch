@@ -6,4 +6,4 @@ if (typeof URL === 'undefined') {
   URLConstructor = URL
 }
 
-export default URLConstructor;
+export default URLConstructor

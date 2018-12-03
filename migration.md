@@ -13,3 +13,18 @@ Version of `node-fetch` that `isomorphic-fetch` uses populates the `Request.auth
 
 ## `options`
 * only supported on node, browsers don't handle it well
+
+## `append`
+* passing in a filename will not create the `fs.ReadStream` for you
+
+```js
+fluentlyFetch.get('/upload')
+    .attach('file', '/path/to/file.txt')
+```
+
+would instead be   
+
+```js
+fluentlyFetch.get('/upload')
+    .attach('file', fs.createReadStream('/path/to/file.txt'))
+```
