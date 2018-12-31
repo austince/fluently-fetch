@@ -29,6 +29,7 @@ export default (config: CustomKarmaConfig) => {
     exclude: [
       './test/node/**/*',
       './test/util/node/**/*',
+      './src/**/*.node.*',
     ],
     reporters: ['progress', 'karma-typescript'],
     browsers: ['ChromeHeadless'],

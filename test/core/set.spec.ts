@@ -1,5 +1,5 @@
 import * as chai from 'chai'
-import fluentlyFetch from '../../src/fluently-fetch'
+import fluentlyFetch from '../../src'
 import FluentRequestTimeoutError from '../../src/errors/FluentRequestTimeoutError'
 import getBaseUri from '../util/get-base-uri'
 import { head } from 'shelljs'

@@ -5,4 +5,5 @@
 --recursive
 ./test/core/**/*.spec.ts
 ./test/node/**/*.spec.ts
+./src/**/*.spec.ts
 --exit

@@ -1,10 +1,11 @@
 import { Server } from 'net'
-import createServer from './create-server'
-import { HttpApp } from '../FluentRequest'
+import createServer, { HttpApp } from './create-server'
 
-export default (server: Server | HttpApp, port = 0) => {
+export { HttpApp } from './create-server'
+
+export default (server: HttpApp | Server, port = 0): Server => {
   if (typeof server === 'function') {
-    server = createServer(server)
+    server = createServer(server) as Server
   }
 
   const addr = server.address()

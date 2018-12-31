@@ -1,6 +1,6 @@
 import * as chai from 'chai'
 import * as HttpStatus from 'http-status-codes'
-import fluentlyFetch, { FluentRequest } from '../../src/fluently-fetch'
+import fluentlyFetch, { FluentRequest } from '../../src'
 import setupSandbox from '../util/setup-sandbox'
 import getBaseUri from '../util/get-base-uri'
 

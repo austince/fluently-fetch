@@ -1,9 +1,12 @@
 ### Build
 dist
+.rpt2_cache
 
 ### Test coverage
 test/out
 
+### Documentation
+docs
 
 ### Temp test data
 tmp

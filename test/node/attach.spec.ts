@@ -1,8 +1,7 @@
 import * as fs from 'fs'
 import * as path from 'path'
 import * as chai from 'chai'
-import fluentlyFetch from '../../src/fluently-fetch'
-import FormData from '../../src/FormData'
+import fluentlyFetch from '../../src'
 import getBaseUri from '../util/get-base-uri'
 
 const { expect } = chai

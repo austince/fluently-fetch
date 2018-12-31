@@ -17,6 +17,7 @@
     "no-parameter-reassignment": [
       false
     ],
+    "import-name": false,
     "no-console": {
       "severity": "warn",
       "options": [

@@ -1,9 +1,15 @@
-let FormDataConstructor // tslint:disable-line:variable-name
-if (typeof FormData === 'undefined') {
+interface FormDataConstructorType {
+  prototype: FormData;
+  new(form?: HTMLFormElement): FormData;
+}
+
+let FormDataConstructor: FormDataConstructorType // tslint:disable-line:variable-name
+// @ts-ignore
+if (process.browser) {
+  FormDataConstructor = FormData
+} else {
   // Node
   FormDataConstructor = require('form-data')
-} else {
-  FormDataConstructor = FormData
 }
 
 export default FormDataConstructor

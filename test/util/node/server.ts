@@ -7,7 +7,7 @@ import * as basicAuth from 'basic-auth'
 import * as morgan from 'morgan'
 import * as cors from 'cors'
 import { Fields, Files, File, IncomingForm } from 'formidable'
-import { HttpApp } from '../../../src/FluentRequest'
+import { HttpApp } from '../../../src/util/start-server'
 
 const PUBLIC_DIR = path.join(__dirname, 'public')
 const UPLOAD_DIR = path.join(__dirname, 'tmp')

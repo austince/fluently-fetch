@@ -1,6 +1,6 @@
 import * as chai from 'chai'
 import * as HttpStatus from 'http-status-codes'
-import fluentlyFetch from '../../src/fluently-fetch'
+import fluentlyFetch from '../../src'
 import getBaseUri from '../util/get-base-uri'
 
 const { expect } = chai

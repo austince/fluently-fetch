@@ -1,9 +1,17 @@
-let URLConstructor // tslint:disable-line:variable-name
-if (typeof URL === 'undefined') {
+interface URLConstructorType {
+  prototype: URL;
+  new(url: string, base?: string | URL): URL;
+  createObjectURL(object: any): string;
+  revokeObjectURL(url: string): void;
+}
+
+let URLConstructor: URLConstructorType // tslint:disable-line:variable-name
+// @ts-ignore
+if (process.browser) {
+  URLConstructor = URL
+} else {
   // Node
   ({ URL: URLConstructor } = require('url'))
-} else {
-  URLConstructor = URL
 }
 
 export default URLConstructor

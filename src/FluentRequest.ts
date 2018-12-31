@@ -1,13 +1,11 @@
 import { Server } from 'net'
 import { ReadStream } from 'fs';
-import { IncomingMessage, ServerResponse } from 'http'
-import 'isomorphic-fetch'
 import assignUrl from './util/assign-url'
 import assignFormData from './util/assign-form-data'
 import serverAddress from './util/server-address'
 import shortHandTypes from './util/short-hand-types'
 import base64Encode from './util/base64-encode'
-import startServer from './util/start-server'
+import startServer, { HttpApp } from './util/start-server'
 import FluentResponseError from './errors/FluentResponseError'
 import timedFetch from './timed-fetch'
 import URL from './URL'
@@ -58,9 +56,9 @@ export interface AuthOptions {
   type: 'basic' | 'bearer'
 }
 
-export type HttpApp = (request: IncomingMessage, response: ServerResponse) => void
+export type FluentRequestInput = FluentRequest | Server | HttpApp | string
 
-export type Plugin = (req: FluentRequest) => FluentRequest
+export type FluentRequestPlugin = (req: FluentRequest) => FluentRequest
 
 export type FormField = string | boolean | Blob | File | ReadStream
 
@@ -80,7 +78,7 @@ export default class FluentRequest extends Request {
   protected timeoutMs: number | undefined
 
   constructor(
-    input: FluentRequest | Server | HttpApp | string = 'http://localhost',
+    input: FluentRequestInput = 'http://localhost',
     initOptions: FluentRequestInit = {},
   ) {
     let url = input
@@ -128,7 +126,7 @@ export default class FluentRequest extends Request {
     return this
   }
 
-  use(plugin: Plugin): FluentRequest {
+  use(plugin: FluentRequestPlugin): FluentRequest {
     const currentPipe = this.pluginPipe
     this.pluginPipe = req => plugin(currentPipe(req))
     return this

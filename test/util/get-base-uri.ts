@@ -1,4 +1,4 @@
-import { HttpApp } from '../../src/FluentRequest'
+import { HttpApp } from '../../src/util/start-server'
 
 export default async (): Promise<string|HttpApp> => {
   if (typeof window !== 'undefined') {
