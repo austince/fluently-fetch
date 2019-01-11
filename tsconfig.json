@@ -17,8 +17,7 @@
     "declarationDir": "dist/types",
     "outDir": "dist/lib",
     "typeRoots": [
-      "node_modules/@types",
-      "node_modules/chai-http/types/index.d.ts"
+      "node_modules/@types"
     ]
   },
   "include": [
