@@ -1,9 +1,7 @@
-import * as chai from 'chai'
 import fluentlyFetch, { FluentRequest } from '../../src'
+import { expect } from '../util/chai'
 import setupSandbox from '../util/setup-sandbox'
 import getBaseUri from '../util/get-base-uri'
-
-const { expect } = chai
 
 describe('fluently-fetch use', () => {
   let uri

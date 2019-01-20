@@ -1,10 +1,6 @@
-import * as chai from 'chai'
 import fluentlyFetch from '../../src'
-import FluentRequestTimeoutError from '../../src/errors/FluentRequestTimeoutError'
+import { expect } from '../util/chai'
 import getBaseUri from '../util/get-base-uri'
-import { head } from 'shelljs'
-
-const { expect } = chai
 
 describe('fluently-fetch setHeader', function () {
   this.timeout(2000)

@@ -1,10 +1,8 @@
-import * as chai from 'chai'
+import { expect } from '../util/chai'
 import * as HttpStatus from 'http-status-codes'
 import fluentlyFetch from '../../src'
 import FluentRequestTimeoutError from '../../src/errors/FluentRequestTimeoutError'
 import getBaseUri from '../util/get-base-uri'
-
-const { expect } = chai
 
 describe('fluently-fetch setTimeout', function () {
   this.timeout(10000)
@@ -29,19 +27,5 @@ describe('fluently-fetch setTimeout', function () {
 
     expect(res).to.be.ok
     expect(res).to.have.status(HttpStatus.OK)
-  })
-
-  it('should use deprecated parameters when possible', async () => {
-    const res = await fluentlyFetch(uri)
-      .get('/delay/1')
-      .setTimeout({ response: 20 })
-
-    expect(res).to.be.ok
-    expect(res).to.have.status(HttpStatus.OK)
-  })
-
-  it('should reject deprecated parameters', () => {
-    const req = fluentlyFetch(uri)
-    expect(() => req.setTimeout({ response: 10, deadline: 10 })).to.throw(TypeError)
   })
 })

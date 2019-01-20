@@ -1,9 +1,7 @@
-import * as chai from 'chai'
 import fluentlyFetch from '../../src'
-import getBaseUri from '../util/get-base-uri'
 import URLSearchParams from '../../src/URLSearchParams'
-
-const { expect } = chai
+import { expect } from '../util/chai'
+import getBaseUri from '../util/get-base-uri'
 
 describe('fluently-fetch setQuery', function () {
   this.timeout(5000)

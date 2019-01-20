@@ -1,9 +1,8 @@
-import * as chai from 'chai'
+import { expect } from '../util/chai'
 import * as HttpStatus from 'http-status-codes'
 import fluentlyFetch from '../../src'
 import getBaseUri from '../util/get-base-uri'
 
-const { expect } = chai
 
 describe('fluently-fetch setAuth', function () {
   this.timeout(5000)
@@ -45,7 +44,7 @@ describe('fluently-fetch setAuth', function () {
     const token = 'ruhrohToken'
     const res = await fluentlyFetch(uri)
       .get('/echo')
-      .setAuth(token, { type: 'bearer' })
+      .setAuth(token)
 
     expect(res).to.be.ok
     const { headers } = await res.json()

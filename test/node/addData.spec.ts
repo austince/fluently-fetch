@@ -1,9 +1,7 @@
-import * as chai from 'chai'
 import fluentlyFetch from '../../src'
 import FormData from '../../src/FormData'
+import { expect } from '../util/chai'
 import getBaseUri from '../util/get-base-uri'
-
-const { expect } = chai
 
 describe('fluently-fetch addData', function () {
   this.timeout(10000)

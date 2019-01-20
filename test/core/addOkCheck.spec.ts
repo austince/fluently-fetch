@@ -1,11 +1,9 @@
-import * as chai from 'chai'
 import * as HttpStatus from 'http-status-codes'
 import fluentlyFetch from '../../src'
+import { expect } from '../util/chai'
 import getBaseUri from '../util/get-base-uri'
 import setupSandbox from '../util/setup-sandbox'
 import FluentResponseError from '../../src/errors/FluentResponseError'
-
-const { expect } = chai
 
 describe('fluently-fetch addOkCheck', function () {
   this.timeout(5000)

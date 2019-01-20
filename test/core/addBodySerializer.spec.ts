@@ -1,9 +1,7 @@
-import * as chai from 'chai'
 import fluentlyFetch from '../../src'
+import { expect } from '../util/chai'
 import getBaseUri from '../util/get-base-uri'
 import setupSandbox from '../util/setup-sandbox'
-
-const { expect } = chai
 
 describe('fluently-fetch addBodySerializer', function () {
   this.timeout(10000)

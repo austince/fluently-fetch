@@ -46,7 +46,7 @@ function getContentTypeForBody(body): string | null {
 export interface FluentRequestInit extends RequestInit {
   url?: string
   body?: any
-  timeout?: number
+  timeoutMillis?: number
 }
 
 export type FluentRequestInput = FluentRequest | Server | HttpApp | string
@@ -115,14 +115,13 @@ export default class FluentRequest extends Request {
       server: undefined,
     }
 
-    const defaultInitOptions: FluentRequestInit = {
-      timeout: undefined,
+    const defaultInitOptions: FluentRequestInit = Object.assign({
+      timeoutMillis: undefined,
       credentials: 'same-origin',
-    }
+    }, initOptions)
 
     if (input instanceof Request) {
       initOptions = Object.assign(
-        {},
         defaultInitOptions,
         FluentRequest.getInitOptions(input),
         initOptions,
@@ -140,6 +139,9 @@ export default class FluentRequest extends Request {
     }
 
     super(url as string, initOptions)
+    // FluentRequest specific init options
+    this.timeoutMs = defaultInitOptions.timeoutMillis
+    // Default configs
     this.server = defaults.server
     this.responsePipe = defaults.responsePipe
     this.pluginPipe = defaults.pluginPipe
@@ -153,7 +155,9 @@ export default class FluentRequest extends Request {
    */
   protected pipeBody(pipe: (body: any) => any | Promise<any>): FluentRequest {
     const currentPipe = this.reqBodyPipe
-    this.reqBodyPipe = body => Promise.resolve(pipe(body)).then(body => currentPipe(body))
+    this.reqBodyPipe = body =>
+      Promise.resolve(currentPipe(body))
+        .then(body => pipe(body))
     return this
   }
 
@@ -175,11 +179,11 @@ export default class FluentRequest extends Request {
     let req: FluentRequest = this // tslint:disable-line:no-this-assignment
 
     // Apply plugins
-    req = await req.pluginPipe(req)
+    // req = await req.pluginPipe(req)
 
     if (req.rawBody !== undefined) {
       const bodyContent = await req.reqBodyPipe(req.rawBody)
-      req = req.clone({ body: bodyContent })
+      req = req.clone({ body: serializeBody(bodyContent) })
       const newType = getContentTypeForBody(req.rawBody)
       if (newType) {
         req = req.setType(newType)
@@ -459,13 +463,13 @@ export default class FluentRequest extends Request {
   }
 
   /**
-   * Set the response timeout.
+   * Set the response timeout in milliseconds.
    *
    * @param amount
    */
   setTimeout(amount: number): FluentRequest {
     return this.clone({
-      timeout: amount,
+      timeoutMillis: amount,
     })
   }
 

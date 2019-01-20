@@ -1,10 +1,8 @@
 import * as fs from 'fs'
 import * as path from 'path'
-import * as chai from 'chai'
 import fluentlyFetch from '../../src'
+import { expect } from '../util/chai'
 import getBaseUri from '../util/get-base-uri'
-
-const { expect } = chai
 
 const TEST_FILE_DIR = path.join(__dirname, '..', 'util', 'node', 'public')
 const TEST_JSON_FILE_PATH = path.join(TEST_FILE_DIR, 'test-file.json')
