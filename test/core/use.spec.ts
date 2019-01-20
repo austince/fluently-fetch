@@ -1,5 +1,4 @@
 import * as chai from 'chai'
-import * as HttpStatus from 'http-status-codes'
 import fluentlyFetch, { FluentRequest } from '../../src'
 import setupSandbox from '../util/setup-sandbox'
 import getBaseUri from '../util/get-base-uri'
@@ -19,7 +18,7 @@ describe('fluently-fetch use', () => {
 
     const plugins = {
       uuid(req: FluentRequest) {
-        req.set('X-UUID', now)
+        req.setHeader('X-UUID', now)
         return req
       },
       timeout(req: FluentRequest) {

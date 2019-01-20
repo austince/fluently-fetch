@@ -5,7 +5,7 @@ import getBaseUri from '../util/get-base-uri'
 
 const { expect } = chai
 
-describe('fluently-fetch field', function () {
+describe('fluently-fetch setField', function () {
   this.timeout(10000)
 
   let uri
@@ -16,8 +16,8 @@ describe('fluently-fetch field', function () {
   it('should create a new FormData body if none exists', async () => {
     const res = await fluentlyFetch(uri)
       .post('/echo-form')
-      .field('billy', 'bob')
-      .field('thorton', true)
+      .setField('billy', 'bob')
+      .setField('thorton', true)
 
     expect(res).to.be.ok
     const { body, headers } = await res.json()
@@ -30,7 +30,7 @@ describe('fluently-fetch field', function () {
     const vals = ['bob', true]
     const res = await fluentlyFetch(uri)
       .post('/echo-form')
-      .field('billy[]', vals)
+      .setField('billy[]', vals)
 
     expect(res).to.be.ok
     const { body, headers } = await res.json()
@@ -46,7 +46,7 @@ describe('fluently-fetch field', function () {
     }
     const res = await fluentlyFetch(uri)
       .post('/echo-form')
-      .field(dict)
+      .setField(dict)
 
     expect(res).to.be.ok
     const { body, headers } = await res.json()
@@ -60,8 +60,8 @@ describe('fluently-fetch field', function () {
     data.append('name', 'jobi')
     const res = await fluentlyFetch(uri)
       .post('/echo-form')
-      .send(data)
-      .field('hog', 'wild')
+      .addData(data)
+      .setField('hog', 'wild')
 
     expect(res).to.be.ok
     const { body, headers } = await res.json()

@@ -5,7 +5,7 @@ import setupSandbox from '../util/setup-sandbox'
 
 const { expect } = chai
 
-describe('fluently-fetch serialize', function () {
+describe('fluently-fetch addBodySerializer', function () {
   this.timeout(10000)
 
   let uri
@@ -44,8 +44,8 @@ describe('fluently-fetch serialize', function () {
       const serializer = sandbox.spy(fn)
       const res = await fluentlyFetch(uri)
         .post('/echo')
-        .send(input)
-        .serialize(serializer)
+        .addData(input)
+        .addBodySerializer(serializer)
 
       expect(res).to.be.ok
       const { body } = await res.json()
@@ -66,7 +66,7 @@ describe('fluently-fetch serialize', function () {
     const serializer = sandbox.spy(body => body)
     const res = await fluentlyFetch(uri)
       .post('/echo')
-      .serialize(serializer)
+      .addBodySerializer(serializer)
 
     expect(res).to.be.ok
     expect(serializer).to.not.have.been.called

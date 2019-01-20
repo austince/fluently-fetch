@@ -5,7 +5,7 @@ import URLSearchParams from '../../src/URLSearchParams'
 
 const { expect } = chai
 
-describe('fluently-fetch query', function () {
+describe('fluently-fetch setQuery', function () {
   this.timeout(5000)
 
   let uri
@@ -42,7 +42,7 @@ describe('fluently-fetch query', function () {
     it(`should set query from ${input.constructor.name} '${input}'`, async () => {
       const res = await fluentlyFetch(uri)
         .get('/echo')
-        .query(input)
+        .setQuery(input)
 
       expect(res).to.be.ok
       const { query } = await res.json()
@@ -63,8 +63,8 @@ describe('fluently-fetch query', function () {
       async () => {
         const res = await fluentlyFetch(uri)
           .get('/echo')
-          .query(first)
-          .query(second)
+          .setQuery(first)
+          .setQuery(second)
 
         expect(res).to.be.ok
         const { query } = await res.json()

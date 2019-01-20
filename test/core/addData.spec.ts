@@ -5,7 +5,7 @@ import getBaseUri from '../util/get-base-uri'
 
 const { expect } = chai
 
-describe('fluently-fetch send', function () {
+describe('fluently-fetch addData', function () {
   this.timeout(10000)
 
   let uri
@@ -17,7 +17,7 @@ describe('fluently-fetch send', function () {
     const data = { name: 'jobi' }
     const res = await fluentlyFetch(uri)
       .post('/echo')
-      .send(data)
+      .addData(data)
 
     expect(res).to.be.ok
     const { body, headers } = await res.json()
@@ -30,8 +30,8 @@ describe('fluently-fetch send', function () {
     const other = { job: "jobin' around" }
     const res = await fluentlyFetch(uri)
       .post('/echo')
-      .send(data)
-      .send(other)
+      .addData(data)
+      .addData(other)
 
     expect(res).to.be.ok
     const { body } = await res.json()
@@ -43,8 +43,8 @@ describe('fluently-fetch send', function () {
     const otherArr = ['red', 'purple']
     const res = await fluentlyFetch(uri)
       .post('/echo')
-      .send(arr)
-      .send(otherArr)
+      .addData(arr)
+      .addData(otherArr)
 
     expect(res).to.be.ok
     const { body } = await res.json()
@@ -61,7 +61,7 @@ describe('fluently-fetch send', function () {
       .post('/echo')
 
     Object.keys(data)
-      .forEach(key => req.send(`${key}=${data[key]}`))
+      .forEach(key => req.addData(`${key}=${data[key]}`))
 
     const res = await req
 
@@ -76,7 +76,7 @@ describe('fluently-fetch send', function () {
     data.append('name', 'jobi')
     const res = await fluentlyFetch(uri)
       .post('/echo-form')
-      .send(data)
+      .addData(data)
 
     expect(res).to.be.ok
     const { body, headers } = await res.json()

@@ -4,7 +4,7 @@ import getBaseUri from '../util/get-base-uri'
 
 const { expect } = chai
 
-describe('fluently-fetch method', function () {
+describe('fluently-fetch setMethodAndPath', function () {
   this.timeout(5000)
 
   let uri

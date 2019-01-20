@@ -6,7 +6,7 @@ import { head } from 'shelljs'
 
 const { expect } = chai
 
-describe('fluently-fetch set', function () {
+describe('fluently-fetch setHeader', function () {
   this.timeout(2000)
 
   let uri
@@ -24,7 +24,7 @@ describe('fluently-fetch set', function () {
       .get('/echo')
 
     headers.forEach(([header, val]) => {
-      req.set(header, val)
+      req.setHeader(header, val)
     })
 
     const res = await req
@@ -37,7 +37,7 @@ describe('fluently-fetch set', function () {
   })
 
   it('should reject when given incomplete data', () => {
-    expect(() => fluentlyFetch(uri).set('key')).to.throw(TypeError)
+    expect(() => fluentlyFetch(uri).setHeader('key')).to.throw(TypeError)
   })
 
   it('should set headers from an object', async () => {
@@ -48,7 +48,7 @@ describe('fluently-fetch set', function () {
     }
     const res = await fluentlyFetch(uri)
       .get('/echo')
-      .set(headers)
+      .setHeader(headers)
 
     expect(res).to.be.ok
     const { headers: sentHeaders } = await res.json()

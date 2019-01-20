@@ -4,7 +4,7 @@ import getBaseUri from '../util/get-base-uri'
 
 const { expect } = chai
 
-describe('fluently-fetch accept', () => {
+describe('fluently-fetch setAccept', () => {
   let uri
   before(async () => {
     uri = await getBaseUri()
@@ -17,7 +17,7 @@ describe('fluently-fetch accept', () => {
   ].forEach(type => it(`should set Accept to ${type}`, async () => {
     const res = await fluentlyFetch(uri)
       .get('/echo')
-      .accept(type)
+      .setAccept(type)
 
     expect(res).to.be.ok
     const { headers } = await res.json()
@@ -35,7 +35,7 @@ describe('fluently-fetch accept', () => {
   ].forEach(([shorthand, type]) => it(`should accept shorthand ${shorthand} to ${type}`, async () => {
     const res = await fluentlyFetch(uri)
       .get('/echo')
-      .accept(shorthand)
+      .setAccept(shorthand)
 
     expect(res).to.be.ok
     const { headers } = await res.json()

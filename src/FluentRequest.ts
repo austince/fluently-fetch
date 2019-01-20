@@ -1,5 +1,5 @@
 import { Server } from 'net'
-import { ReadStream } from 'fs';
+import { ReadStream } from 'fs'
 import assignUrl from './util/assign-url'
 import assignFormData from './util/assign-form-data'
 import serverAddress from './util/server-address'
@@ -12,6 +12,11 @@ import URL from './URL'
 import URLSearchParams from './URLSearchParams'
 import FormData from './FormData'
 
+/**
+ * The serializer for request bodies before they are sent.
+ *
+ * @param body
+ */
 function serializeBody(body) {
   let serialized = body
   if (body && typeof body !== 'string' && !(body instanceof FormData)) {
@@ -20,7 +25,12 @@ function serializeBody(body) {
   return serialized
 }
 
-function getTypeForBody(body) {
+/**
+ * Get the Content-Type for a body, or null if no type is applicable.
+ *
+ * @param body
+ */
+function getContentTypeForBody(body): string | null {
   if (body instanceof FormData) {
     return null
   }
@@ -33,32 +43,15 @@ function getTypeForBody(body) {
   return shortHandTypes.json
 }
 
-function getInitOptions(req: Request): RequestInit {
-  return {
-    method: req.method,
-    headers: req.headers,
-    mode: req.mode,
-    credentials: req.credentials,
-    cache: req.cache,
-    redirect: req.redirect,
-    referrer: req.referrer,
-    integrity: req.integrity,
-    body: req.body,
-  }
-}
-
 export interface FluentRequestInit extends RequestInit {
   url?: string
   body?: any
-}
-
-export interface AuthOptions {
-  type: 'basic' | 'bearer'
+  timeout?: number
 }
 
 export type FluentRequestInput = FluentRequest | Server | HttpApp | string
 
-export type FluentRequestPlugin = (req: FluentRequest) => FluentRequest
+export type FluentRequestPlugin = (req: FluentRequest) => FluentRequest | Promise<FluentRequest>
 
 export type FormField = string | boolean | Blob | File | ReadStream
 
@@ -66,6 +59,12 @@ export interface FormAttachOptions {
   filename?: string
   contentType?: string
 }
+
+/**
+ * A fluent Request that is fully compatible with {@link fetch}.
+ *
+ * @extends Request
+ */
 export default class FluentRequest extends Request {
   protected server?: Server
   /**
@@ -73,9 +72,36 @@ export default class FluentRequest extends Request {
    */
   protected rawBody?: any
   protected pluginPipe
-  protected responsePipe: (res: Response) => Promise<Response>
-  protected reqBodyPipe
+  protected responsePipe
+  protected reqBodyPipe: (body: any) => Promise<any>
   protected timeoutMs: number | undefined
+
+  /**
+   * Clone over the {@link FluentRequestInit} options from a request.
+   *
+   * @param req
+   */
+  static getInitOptions(req: Request): FluentRequestInit {
+    const base = {
+      method: req.method,
+      headers: req.headers,
+      mode: req.mode,
+      credentials: req.credentials,
+      cache: req.cache,
+      redirect: req.redirect,
+      referrer: req.referrer,
+      integrity: req.integrity,
+      body: req.body,
+    }
+
+    if (req instanceof FluentRequest) {
+      return Object.assign(base, {
+        timeout: req.timeoutMs,
+      })
+    }
+
+    return base
+  }
 
   constructor(
     input: FluentRequestInput = 'http://localhost',
@@ -83,28 +109,34 @@ export default class FluentRequest extends Request {
   ) {
     let url = input
     const defaults: any = {
-      responsePipe: async (res: Response) => res,
+      responsePipe: (res: Response) => res,
       pluginPipe: (req: FluentRequest) => req,
-      reqBodyPipe: async body => serializeBody(body),
+      reqBodyPipe: body => body,
       server: undefined,
     }
 
-    if (input instanceof Request) {
-      initOptions = getInitOptions(input)
-      url = input.url
+    const defaultInitOptions: FluentRequestInit = {
+      timeout: undefined,
+      credentials: 'same-origin',
+    }
 
+    if (input instanceof Request) {
+      initOptions = Object.assign(
+        {},
+        defaultInitOptions,
+        FluentRequest.getInitOptions(input),
+        initOptions,
+      )
+      url = initOptions.url || input.url
       if (input instanceof FluentRequest) {
         defaults.responsePipe = input.responsePipe
         defaults.pluginPipe = input.pluginPipe
         defaults.reqBodyPipe = input.reqBodyPipe
       }
     } else if (typeof input !== 'string') {
+      // Must be an HttpApp
       defaults.server = startServer(input)
       url = initOptions.url || serverAddress(defaults.server)
-    }
-
-    if (!initOptions.credentials) {
-      initOptions.credentials = 'same-origin'
     }
 
     super(url as string, initOptions)
@@ -114,288 +146,45 @@ export default class FluentRequest extends Request {
     this.reqBodyPipe = defaults.reqBodyPipe
   }
 
-  protected pipeBody(pipe: (body: any) => Response | Promise<any>): FluentRequest {
+  /**
+   * Sequentially pipes the body through a chain of functions.
+   *
+   * @param pipe
+   */
+  protected pipeBody(pipe: (body: any) => any | Promise<any>): FluentRequest {
     const currentPipe = this.reqBodyPipe
-    this.reqBodyPipe = body => (async body => pipe(body))(body).then(currentPipe)
+    this.reqBodyPipe = body => Promise.resolve(pipe(body)).then(body => currentPipe(body))
     return this
   }
 
+  /**
+   * Add a pipe to the incoming response.
+   *
+   * @param pipe
+   */
   protected pipeRes(pipe: (res: Response) => Response | Promise<Response>): FluentRequest {
     const currentPipe = this.responsePipe
-    this.responsePipe = res => currentPipe(res).then(pipe)
+    this.responsePipe = res => Promise.resolve(currentPipe(res)).then(pipe)
     return this
   }
 
-  use(plugin: FluentRequestPlugin): FluentRequest {
-    const currentPipe = this.pluginPipe
-    this.pluginPipe = req => plugin(currentPipe(req))
-    return this
-  }
-
-  clone(overrides: FluentRequestInit = {}): FluentRequest {
-    const initOptions = Object.assign(getInitOptions(this), overrides)
-    let cloned
-    if (this.server) {
-      initOptions.url = overrides.url || this.url
-      cloned = new FluentRequest(this.server, initOptions)
-    } else {
-      const url = overrides.url || this.url
-      cloned = new FluentRequest(url, initOptions)
-    }
-
-    cloned.responsePipe = this.responsePipe
-    cloned.pluginPipe = this.pluginPipe
-    cloned.reqBodyPipe = this.reqBodyPipe
-    cloned.rawBody = this.rawBody
-
-    return cloned
-  }
-
-  private setMethodAndPath(method: string, pathname: string): FluentRequest {
-    return this.clone({
-      method,
-      url: assignUrl(this.url, { pathname }),
-    })
-  }
-
-  get(pathname: string): FluentRequest {
-    return this.setMethodAndPath('GET', pathname)
-  }
-
-  put(pathname: string): FluentRequest {
-    return this.setMethodAndPath('PUT', pathname)
-  }
-
-  patch(pathname: string): FluentRequest {
-    return this.setMethodAndPath('PATCH', pathname)
-  }
-
-  post(pathname: string): FluentRequest {
-    return this.setMethodAndPath('POST', pathname)
-  }
-
-  delete(pathname: string): FluentRequest {
-    return this.setMethodAndPath('DELETE', pathname)
-  }
-
-  del(pathname: string): FluentRequest {
-    return this.delete(pathname)
-  }
-
-  head(pathname: string): FluentRequest {
-    return this.setMethodAndPath('HEAD', pathname)
-  }
-
-  options(pathname: string): FluentRequest {
-    return this.setMethodAndPath('OPTIONS', pathname)
-  }
-
-  set(keyOrMap: object | string, value?: string): FluentRequest {
-    if (typeof keyOrMap === 'object') {
-      for (const objKey of Object.keys(keyOrMap)) {
-        this.headers.set(objKey, keyOrMap[objKey])
-      }
-    } else if (typeof keyOrMap === 'string') {
-      if (value === undefined) {
-        throw new TypeError('value must be defined.')
-      }
-
-      this.headers.set(keyOrMap, value)
-    }
-    return this
-  }
-
-  type(type: string): FluentRequest {
-    return this.set('Content-Type', shortHandTypes[type] || type)
-  }
-
-  accept(type: string): FluentRequest {
-    return this.set('Accept', shortHandTypes[type] || type)
-  }
-
-  query(query: string[][] | string | URLSearchParams | { [key: string]: any }): FluentRequest {
-    const queryParams = new URLSearchParams(query)
-    const { searchParams } = new URL(this.url)
-    for (const [key, value] of queryParams.entries()) {
-      searchParams.set(key, value)
-    }
-    return this.clone({
-      url: assignUrl(this.url, { search: searchParams.toString() }),
-    })
-  }
-
-  // Breaking change from the SuperAgent api
-  // Sort comparator takes two tuples of form [param, value]
-  sortQuery(comparator?: (a: [string, string], b: [string, string]) => number): FluentRequest {
-    const { searchParams } = new URL(this.url)
-    const queryArr = Array.from(searchParams) as [string, string][]
-    if (comparator) {
-      queryArr.sort(comparator)
-    } else {
-      queryArr.sort()
-    }
-    const sortedParams = new URLSearchParams(queryArr)
-    return this.clone({
-      url: assignUrl(this.url, { search: sortedParams.toString() }),
-    })
-  }
-
-  setAuth(usernameOrToken: string, password: AuthOptions | string = '', options?: AuthOptions): FluentRequest {
-    if (typeof password === 'object') {
-      options = password as AuthOptions
-      password = ''
-    }
-
-    if (!options) {
-      options = {
-        type: 'basic',
-      }
-    }
-
-    switch (options.type) {
-      case 'basic':
-        return this.set('Authorization', `Basic ${base64Encode(`${usernameOrToken}:${password}`)}`)
-      case 'bearer':
-        return this.set('Authorization', `Bearer ${usernameOrToken}`)
-      default:
-        throw new TypeError('Auth type must be either `basic`, `auto`, or `bearer`.')
-    }
-  }
-
-  setMode(mode: RequestMode): FluentRequest {
-    return this.clone({
-      mode,
-    })
-  }
-
-  withCredentials(): FluentRequest {
-    return this.clone({
-      credentials: 'include',
-    })
-  }
-
-  ok(filter: (res: Response) => boolean | Promise<Boolean>): FluentRequest {
-    this.pipeRes(async (res: Response) => {
-      const isOk = await filter(res)
-      if (!isOk) {
-        throw new FluentResponseError(res)
-      }
-      return res
-    })
-    return this
-  }
-
-  setTimeout(amount: number)
   /**
-   * @deprecated
-   * @param timoutOptions
+   * Send the request.
    */
-  setTimeout(timoutOptions: { response: number })
-  /**
-   * @deprecated
-   * @param timoutOptions
-   */
-  setTimeout(timoutOptions: { response: number, deadline?: number })
-
-  setTimeout(amount: number | { response: number, deadline?: number }): FluentRequest {
-    if (typeof amount === 'object') {
-      if (amount.deadline !== undefined) {
-        throw new TypeError('Deadline timeout is not supported.')
-      }
-      this.timeoutMs = amount.response
-    } else {
-      this.timeoutMs = amount
-    }
-    return this
-  }
-
-  serialize(fn: (body: any) => any | Promise<any>): FluentRequest {
-    return this.pipeBody(async body => fn(body))
-  }
-
-  field(nameOrDict: string | { [name: string]: FormField }, val?: FormField | FormField[]): FluentRequest {
-    if (nameOrDict === undefined || nameOrDict === null) {
-      throw new TypeError(`Must supply a field name or object, not ${nameOrDict}.`)
-    }
-
-    if (!(this.rawBody instanceof FormData)) {
-      this.rawBody = new FormData()
-    }
-
-    if (typeof nameOrDict === 'object') {
-      return Object.keys(nameOrDict)
-        .reduce((acc: FluentRequest, key: string) => {
-          return acc.field(key, nameOrDict[key])
-        }, this)
-    }
-
-    if (Array.isArray(val)) {
-      return val.reduce((acc: FluentRequest, item: FormField) => {
-        return acc.field(nameOrDict, item)
-      }, this)
-    }
-
-    if (val === undefined) {
-      throw new TypeError(`Must supply a value to append for field ${nameOrDict}.`)
-    }
-
-    if (typeof val === 'boolean') {
-      val = val.toString()
-    }
-
-    this.rawBody.append(nameOrDict, val)
-    return this
-  }
-
-  attach(name: string, data: Blob | Buffer | ReadStream, options: FormAttachOptions|string = {}): FluentRequest {
-    if (!(this.rawBody instanceof FormData)) {
-      this.rawBody = new FormData()
-    }
-
-    if (typeof options === 'string') {
-      options = { filename: options }
-    }
-
-    if (!options.filename && (data as ReadStream).path) {
-      options.filename = (data as ReadStream).path.toString()
-    }
-
-    this.rawBody.append(name, data, options)
-    return this
-  }
-
-  send(data: string | object | FormData | URLSearchParams): FluentRequest {
-    // Either overwrite or append to the body
-    if (typeof this.rawBody === 'string' && typeof data === 'string') {
-      // Concatenate string form data
-      this.rawBody = `${this.rawBody}&${data}`
-    } else if (this.rawBody instanceof FormData && data instanceof FormData) {
-      this.rawBody = assignFormData(this.rawBody, data as FormData)
-    } else if (Array.isArray(this.rawBody) && Array.isArray(data)) {
-      this.rawBody = this.rawBody.concat(data)
-    } else if (typeof this.rawBody === 'object' && typeof data === 'object') {
-      this.rawBody = Object.assign(this.rawBody, data)
-    } else {
-      this.rawBody = data
-    }
-
-    return this
-  }
-
   private async invoke(): Promise<Response> {
-    // Todo: move this to a out-of-class util function that fetches one of these guyz
     let req: FluentRequest = this // tslint:disable-line:no-this-assignment
+
+    // Apply plugins
+    req = await req.pluginPipe(req)
+
     if (req.rawBody !== undefined) {
       const bodyContent = await req.reqBodyPipe(req.rawBody)
       req = req.clone({ body: bodyContent })
-      const newType = getTypeForBody(req.rawBody)
+      const newType = getContentTypeForBody(req.rawBody)
       if (newType) {
-        req = req.type(newType)
+        req = req.setType(newType)
       }
     }
-
-    // Apply plugins
-    req = req.pluginPipe(req)
 
     // Apply timeout, if specified
     let res
@@ -415,6 +204,407 @@ export default class FluentRequest extends Request {
     })
   }
 
+  /**
+   * Add a plugin for customization.
+   *
+   * @param plugin
+   */
+  use(plugin: FluentRequestPlugin): FluentRequest {
+    const currentPipe = this.pluginPipe
+    this.pluginPipe = req => plugin(currentPipe(req))
+    return this
+  }
+
+  /**
+   * Clone the entire request
+   *
+   * @override
+   * @param overrides
+   */
+  clone(overrides: FluentRequestInit = {}): FluentRequest {
+    const initOptions = Object.assign(FluentRequest.getInitOptions(this), overrides)
+    let cloned
+    if (this.server) {
+      initOptions.url = overrides.url || this.url
+      cloned = new FluentRequest(this.server, initOptions)
+    } else {
+      const url = overrides.url || this.url
+      cloned = new FluentRequest(url, initOptions)
+    }
+
+    cloned.responsePipe = this.responsePipe
+    cloned.pluginPipe = this.pluginPipe
+    cloned.reqBodyPipe = this.reqBodyPipe
+    cloned.rawBody = this.rawBody
+
+    return cloned
+  }
+
+  /**
+   * Set the method and path of the request.
+   * There are aliases for most request methods.
+   *
+   * @param method
+   * @param pathname
+   */
+  setMethodAndPath(method: string, pathname: string): FluentRequest {
+    return this.clone({
+      method,
+      url: assignUrl(this.url, { pathname }),
+    })
+  }
+
+  /**
+   * Send a GET request.
+   *
+   * @param pathname
+   */
+  get(pathname: string): FluentRequest {
+    return this.setMethodAndPath('GET', pathname)
+  }
+
+  /**
+   * Send a PUT request.
+   *
+   * @param pathname
+   */
+  put(pathname: string): FluentRequest {
+    return this.setMethodAndPath('PUT', pathname)
+  }
+
+  /**
+   * Send a PATCH request.
+   *
+   * @param pathname
+   */
+  patch(pathname: string): FluentRequest {
+    return this.setMethodAndPath('PATCH', pathname)
+  }
+
+  /**
+   * Send a POST request.
+   *
+   * @param pathname
+   */
+  post(pathname: string): FluentRequest {
+    return this.setMethodAndPath('POST', pathname)
+  }
+
+  /**
+   * Send a DELETE request.
+   *
+   * @param pathname
+   */
+  delete(pathname: string): FluentRequest {
+    return this.setMethodAndPath('DELETE', pathname)
+  }
+
+  /**
+   * Send a DELETE request.
+   * Alias of {@link FluentRequest#delete}.
+   *
+   * @param pathname
+   */
+  del(pathname: string): FluentRequest {
+    return this.delete(pathname)
+  }
+
+  /**
+   * Send a HEAD request.
+   *
+   * @param pathname
+   */
+  head(pathname: string): FluentRequest {
+    return this.setMethodAndPath('HEAD', pathname)
+  }
+
+  /**
+   * Send an OPTIONS request.
+   *
+   * @param pathname
+   */
+  options(pathname: string): FluentRequest {
+    return this.setMethodAndPath('OPTIONS', pathname)
+  }
+
+  /**
+   * Set request Headers.
+   *
+   * @param nameOrMap Either the header name or a name/value pairs map to set from.
+   * @param value The value of the Header.
+   */
+  setHeader(nameOrMap: object | string, value?: string): FluentRequest {
+    if (typeof nameOrMap === 'object') {
+      for (const objKey of Object.keys(nameOrMap)) {
+        this.headers.set(objKey, nameOrMap[objKey])
+      }
+    } else if (typeof nameOrMap === 'string') {
+      if (value === undefined) {
+        throw new TypeError('value must be defined.')
+      }
+
+      this.headers.set(nameOrMap, value)
+    }
+    return this
+  }
+
+  /**
+   * Set the Content-Type header.
+   *
+   * @param type Either a specific type or a shorthand version.
+   */
+  setType(type: string): FluentRequest {
+    return this.setHeader('Content-Type', shortHandTypes[type] || type)
+  }
+
+  /**
+   * Set the Accept header.
+   *
+   * @param type Either a specific type or a shorthand version.
+   */
+  setAccept(type: string): FluentRequest {
+    return this.setHeader('Accept', shortHandTypes[type] || type)
+  }
+
+  /**
+   * Set query parameters.
+   *
+   * @param query
+   */
+  setQuery(query: string[][] | string | URLSearchParams | { [key: string]: any }): FluentRequest {
+    const queryParams = new URLSearchParams(query)
+    const { searchParams } = new URL(this.url)
+    for (const [key, value] of queryParams.entries()) {
+      searchParams.set(key, value)
+    }
+    return this.clone({
+      url: assignUrl(this.url, { search: searchParams.toString() }),
+    })
+  }
+
+  /**
+   * Sort the query parameters.
+   * Breaking change from the SuperAgent api.
+   *
+   * @param comparator The function to use in an {@link Array#sort} that accepts string tuples as items.
+   */
+  sortQuery(comparator?: (a: [string, string], b: [string, string]) => number): FluentRequest {
+    const { searchParams } = new URL(this.url)
+    const queryArr = Array.from(searchParams) as [string, string][]
+    if (comparator) {
+      queryArr.sort(comparator)
+    } else {
+      queryArr.sort()
+    }
+    const sortedParams = new URLSearchParams(queryArr)
+    return this.clone({
+      url: assignUrl(this.url, { search: sortedParams.toString() }),
+    })
+  }
+
+  /**
+   * Set the auth. Either specify a token to be used for Bearer auth
+   * or a username and password to be used for Basic auth.
+   *
+   * @param usernameOrToken
+   * @param password
+   */
+  setAuth(usernameOrToken: string, password?: string): FluentRequest {
+    if (password === undefined) {
+      // Passed just a token for Bearer auth
+      return this.setHeader('Authorization', `Bearer ${usernameOrToken}`)
+    }
+    // Both a username and password for Basic auth
+    return this.setHeader('Authorization', `Basic ${base64Encode(`${usernameOrToken}:${password}`)}`)
+  }
+
+  /**
+   * Set the request mode.
+   *
+   * @param mode
+   */
+  setMode(mode: RequestMode): FluentRequest {
+    return this.clone({
+      mode,
+    })
+  }
+
+  setCredentials(credentials: RequestCredentials) {
+    return this.clone({
+      credentials,
+    })
+  }
+
+  /**
+   * Configure the request to use the 'include' credentials mode.
+   */
+  withCredentials(): FluentRequest {
+    return this.setCredentials('include')
+  }
+
+  /**
+   * Set a function to determine if a request was successful. Runs directly after a response is received.
+   *
+   * @param checkFn
+   */
+  addOkCheck(checkFn: (res: Response) => boolean | Promise<Boolean>): FluentRequest {
+    this.pipeRes(async (res: Response) => {
+      const isOk = await checkFn(res)
+      if (!isOk) {
+        throw new FluentResponseError(res)
+      }
+      return res
+    })
+    return this
+  }
+
+  /**
+   * Set the response timeout.
+   *
+   * @param amount
+   */
+  setTimeout(amount: number): FluentRequest {
+    return this.clone({
+      timeout: amount,
+    })
+  }
+
+  setIntegrity(integrity: string): FluentRequest {
+    return this.clone({
+      integrity,
+    })
+  }
+
+  setCache(cache: RequestCache) {
+    return this.clone({
+      cache,
+    })
+  }
+
+  setRedirect(redirect: RequestRedirect) {
+    return this.clone({
+      redirect,
+    })
+  }
+
+  setReferrerPolicy(referrerPolicy: ReferrerPolicy) {
+    return this.clone({
+      referrerPolicy,
+    })
+  }
+
+  setReferrer(referrer: string) {
+    return this.clone({
+      referrer,
+    })
+  }
+
+  /**
+   * Serialize the body with a custom function before sending the request.
+   *
+   * @param fn
+   */
+  addBodySerializer(fn: (body: any) => any | Promise<any>): FluentRequest {
+    return this.pipeBody(fn)
+  }
+
+  /**
+   * Set a field in a {@link FormData} body. If no body exists, a new instance will be created.
+   *
+   * @param nameOrMap Either the name of the field or a name/value pairs map to set.
+   * @param val The value to set.
+   */
+  setField(nameOrMap: string | { [name: string]: FormField }, val?: FormField | FormField[]): FluentRequest {
+    if (nameOrMap === undefined || nameOrMap === null) {
+      throw new TypeError(`Must supply a field name or object, not ${nameOrMap}.`)
+    }
+
+    if (!(this.rawBody instanceof FormData)) {
+      this.rawBody = new FormData()
+    }
+
+    if (typeof nameOrMap === 'object') {
+      return Object.keys(nameOrMap)
+        .reduce((acc: FluentRequest, key: string) => {
+          return acc.setField(key, nameOrMap[key])
+        }, this)
+    }
+
+    if (Array.isArray(val)) {
+      return val.reduce((acc: FluentRequest, item: FormField) => {
+        return acc.setField(nameOrMap, item)
+      }, this)
+    }
+
+    if (val === undefined) {
+      throw new TypeError(`Must supply a value to append for field ${nameOrMap}.`)
+    }
+
+    if (typeof val === 'boolean') {
+      val = val.toString()
+    }
+
+    this.rawBody.append(nameOrMap, val)
+    return this
+  }
+
+  /**
+   * Attach some chunk or stream of data as the request body as {@link FormData}.
+   *
+   * @param name
+   * @param data
+   * @param options
+   */
+  addAttachment(
+    name: string,
+    data: Blob | Buffer | ReadStream,
+    options: FormAttachOptions | string = {},
+  ): FluentRequest {
+    if (!(this.rawBody instanceof FormData)) {
+      this.rawBody = new FormData()
+    }
+
+    if (typeof options === 'string') {
+      options = { filename: options }
+    }
+
+    if (!options.filename && (data as ReadStream).path) {
+      options.filename = (data as ReadStream).path.toString()
+    }
+
+    this.rawBody.append(name, data, options)
+    return this
+  }
+
+  /**
+   * Attach or merge data to the request's body.
+   *
+   * @param data
+   */
+  addData(data: string | object | FormData | URLSearchParams): FluentRequest {
+    // Either overwrite or append to the body
+    if (typeof this.rawBody === 'string' && typeof data === 'string') {
+      // Concatenate string form data
+      this.rawBody = `${this.rawBody}&${data}`
+    } else if (this.rawBody instanceof FormData && data instanceof FormData) {
+      this.rawBody = assignFormData(this.rawBody, data as FormData)
+    } else if (Array.isArray(this.rawBody) && Array.isArray(data)) {
+      this.rawBody = this.rawBody.concat(data)
+    } else if (typeof this.rawBody === 'object' && typeof data === 'object') {
+      this.rawBody = Object.assign(this.rawBody, data)
+    } else {
+      this.rawBody = data
+    }
+
+    return this
+  }
+
+  /**
+   * Promise-compatible method that can be `await`-ed!
+   *
+   * @param resolve
+   * @param reject
+   */
   async then<TResult1 = Response, TResult2 = never>(
     resolve?: ((value: Response) => TResult1 | PromiseLike<TResult1>) | undefined | null,
     reject?: ((reason: any) => TResult2 | PromiseLike<TResult2>) | undefined | null)
@@ -431,16 +621,5 @@ export default class FluentRequest extends Request {
       }
     }
     return res
-  }
-
-  /**
-   * @deprecated
-   * @param handler
-   */
-  end(handler: (err: Error | null, res?: Response) => any) {
-    return this.then(
-      res => handler(null, res),
-      err => handler(err),
-    )
   }
 }

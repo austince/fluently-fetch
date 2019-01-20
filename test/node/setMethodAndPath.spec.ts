@@ -4,7 +4,7 @@ import getBaseUri from '../util/get-base-uri'
 
 const { expect } = chai
 
-describe('fluently-fetch method', () => {
+describe('fluently-fetch setMethodAndPath', () => {
   let uri
   before(async () => {
     uri = await getBaseUri()

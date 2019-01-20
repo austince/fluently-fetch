@@ -7,7 +7,7 @@ import FluentResponseError from '../../src/errors/FluentResponseError'
 
 const { expect } = chai
 
-describe('fluently-fetch ok', function () {
+describe('fluently-fetch addOkCheck', function () {
   this.timeout(5000)
 
   let uri
@@ -25,7 +25,7 @@ describe('fluently-fetch ok', function () {
       const spiedFn = sandbox.spy(fn)
       const res = await fluentlyFetch(uri)
         .get(`/status/${HttpStatus.CREATED}`)
-        .ok(spiedFn)
+        .addOkCheck(spiedFn)
 
       expect(res).to.be.ok
       expect(spiedFn).to.have.been.calledOnceWithExactly(res)
@@ -35,7 +35,7 @@ describe('fluently-fetch ok', function () {
       const spiedFn = sandbox.spy(fn)
       const req = fluentlyFetch(uri)
         .get(`/status/${HttpStatus.BAD_REQUEST}`)
-        .ok(spiedFn)
+        .addOkCheck(spiedFn)
 
       const err: FluentResponseError = await expect(req).to.be.rejectedWith(FluentResponseError)
       expect(spiedFn).to.have.been.calledOnceWith(err.response)

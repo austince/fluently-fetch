@@ -22,7 +22,7 @@ describe('fluently-fetch sortQuery', function () {
   it('should sort query with a custom function', async () => {
     const res = await fluentlyFetch(uri)
       .get('/echo')
-      .query('c=1&a=1&b=1')
+      .setQuery('c=1&a=1&b=1')
       .sortQuery(reverseAlphaNumericKeySort)
 
     expect(res).to.be.ok
@@ -34,7 +34,7 @@ describe('fluently-fetch sortQuery', function () {
   it('should sort by keys alphabetically by default', async () => {
     const res = await fluentlyFetch(uri)
       .get('/echo')
-      .query('c=1&a=1&b=1')
+      .setQuery('c=1&a=1&b=1')
       .sortQuery()
 
     expect(res).to.be.ok

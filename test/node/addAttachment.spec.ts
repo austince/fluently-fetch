@@ -9,7 +9,7 @@ const { expect } = chai
 const TEST_FILE_DIR = path.join(__dirname, '..', 'util', 'node', 'public')
 const TEST_JSON_FILE_PATH = path.join(TEST_FILE_DIR, 'test-file.json')
 
-describe('fluently-fetch attach', function () {
+describe('fluently-fetch addAttachment', function () {
   this.timeout(10000)
 
   let uri
@@ -20,7 +20,7 @@ describe('fluently-fetch attach', function () {
   it('should upload a file', async () => {
     const res = await fluentlyFetch(uri)
       .post('/echo-form')
-      .attach('file', fs.createReadStream(TEST_JSON_FILE_PATH))
+      .addAttachment('file', fs.createReadStream(TEST_JSON_FILE_PATH))
     const { size: fileSize } = fs.statSync(TEST_JSON_FILE_PATH)
 
     expect(res).to.be.ok
@@ -40,7 +40,7 @@ describe('fluently-fetch attach', function () {
       .post('/echo-form')
 
     testFiles.forEach(([fieldName, filepath]) => {
-      req.attach(fieldName, fs.createReadStream(filepath))
+      req.addAttachment(fieldName, fs.createReadStream(filepath))
     })
 
     const res = await req
@@ -60,7 +60,7 @@ describe('fluently-fetch attach', function () {
     const filename = 'upload.json'
     const res = await fluentlyFetch(uri)
       .post('/echo-form')
-      .attach('file', fs.createReadStream(TEST_JSON_FILE_PATH), { filename })
+      .addAttachment('file', fs.createReadStream(TEST_JSON_FILE_PATH), { filename })
     const { size: fileSize } = fs.statSync(TEST_JSON_FILE_PATH)
 
     expect(res).to.be.ok
@@ -76,7 +76,7 @@ describe('fluently-fetch attach', function () {
     const contentType = 'text/html'
     const res = await fluentlyFetch(uri)
       .post('/echo-form')
-      .attach('file', fs.createReadStream(testHtmlFilePath), { contentType })
+      .addAttachment('file', fs.createReadStream(testHtmlFilePath), { contentType })
     const { size: fileSize } = fs.statSync(testHtmlFilePath)
 
     expect(res).to.be.ok
