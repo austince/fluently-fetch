@@ -1,6 +1,6 @@
 import FluentRequest, {
   FluentRequestInit,
-  FluentRequestInput,
+  FluentRequestInfo,
 } from './FluentRequest'
 import {
   FluentResponseError,
@@ -9,23 +9,23 @@ import {
 } from './errors'
 
 export interface FluentlyFetch {
-  (app?: FluentRequestInput, initOptions?: FluentRequestInit): FluentRequest
+  (app?: FluentRequestInfo, initOptions?: FluentRequestInit): FluentRequest
 
-  get(app?: FluentRequestInput, initOptions?: FluentRequestInit): FluentRequest
+  get(app?: FluentRequestInfo, initOptions?: FluentRequestInit): FluentRequest
 
-  put(app?: FluentRequestInput, initOptions?: FluentRequestInit): FluentRequest
+  put(app?: FluentRequestInfo, initOptions?: FluentRequestInit): FluentRequest
 
-  post(app?: FluentRequestInput, initOptions?: FluentRequestInit): FluentRequest
+  post(app?: FluentRequestInfo, initOptions?: FluentRequestInit): FluentRequest
 
-  patch(app?: FluentRequestInput, initOptions?: FluentRequestInit): FluentRequest
+  patch(app?: FluentRequestInfo, initOptions?: FluentRequestInit): FluentRequest
 
-  options(app?: FluentRequestInput, initOptions?: FluentRequestInit): FluentRequest
+  options(app?: FluentRequestInfo, initOptions?: FluentRequestInit): FluentRequest
 
-  delete(app?: FluentRequestInput, initOptions?: FluentRequestInit): FluentRequest
+  delete(app?: FluentRequestInfo, initOptions?: FluentRequestInit): FluentRequest
 
-  del(app?: FluentRequestInput, initOptions?: FluentRequestInit): FluentRequest
+  del(app?: FluentRequestInfo, initOptions?: FluentRequestInit): FluentRequest
 
-  head(app?: FluentRequestInput, initOptions?: FluentRequestInit): FluentRequest
+  head(app?: FluentRequestInfo, initOptions?: FluentRequestInit): FluentRequest
 }
 
 const methods = [
@@ -37,7 +37,7 @@ const methods = [
   ['options'],
   ['head'],
 ].reduce((props: object, [method, ...aliases]) => {
-  props[method] = (app: FluentRequestInput = 'http://localhost', initOptions: FluentRequestInit = {}) => {
+  props[method] = (app: FluentRequestInfo = 'http://localhost', initOptions: FluentRequestInit = {}) => {
     initOptions.method = method.toUpperCase()
     return new FluentRequest(app, initOptions)
   }
@@ -47,7 +47,7 @@ const methods = [
 }, {})
 
 const fluentlyFetch = <FluentlyFetch>(
-  app: FluentRequestInput = 'http://localhost',
+  app: FluentRequestInfo = 'http://localhost',
   initOptions: FluentRequestInit = {},
 ): FluentRequest => new FluentRequest(app, initOptions)
 

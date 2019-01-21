@@ -49,9 +49,12 @@ export interface FluentRequestInit extends RequestInit {
   timeoutMillis?: number
 }
 
-export type FluentRequestInput = FluentRequest | Server | HttpApp | string
+/**
+ * Extended input options to accept servers and other FluentRequests.
+ */
+export type FluentRequestInfo = FluentRequest | Server | HttpApp | RequestInfo
 
-export type FluentRequestPlugin = (req: FluentRequest) => FluentRequest | Promise<FluentRequest>
+export type FluentRequestPlugin = (req: FluentRequest) => FluentRequest
 
 export type FormField = string | boolean | Blob | File | ReadStream
 
@@ -64,6 +67,7 @@ export interface FormAttachOptions {
  * A fluent Request that is fully compatible with {@link fetch}.
  *
  * @extends Request
+ * @implements PromiseLike<Response>
  */
 export default class FluentRequest extends Request {
   protected server?: Server
@@ -71,10 +75,10 @@ export default class FluentRequest extends Request {
    * Body before it is serialized for the request.
    */
   protected rawBody?: any
-  protected pluginPipe
-  protected responsePipe
-  protected reqBodyPipe: (body: any) => Promise<any>
-  protected timeoutMs: number | undefined
+  protected pluginPipe: FluentRequestPlugin
+  protected responsePipe: (res: Response) => Response|Promise<Response>
+  protected reqBodyPipe: (body: any) => any|Promise<any>
+  protected timeoutMillis: number | undefined
 
   /**
    * Clone over the {@link FluentRequestInit} options from a request.
@@ -96,7 +100,7 @@ export default class FluentRequest extends Request {
 
     if (req instanceof FluentRequest) {
       return Object.assign(base, {
-        timeout: req.timeoutMs,
+        timeoutMillis: req.timeoutMillis,
       })
     }
 
@@ -104,14 +108,14 @@ export default class FluentRequest extends Request {
   }
 
   constructor(
-    input: FluentRequestInput = 'http://localhost',
+    input: FluentRequestInfo = 'http://localhost',
     initOptions: FluentRequestInit = {},
   ) {
     let url = input
     const defaults: any = {
-      responsePipe: (res: Response) => res,
+      responsePipe: async (res: Response) => res,
       pluginPipe: (req: FluentRequest) => req,
-      reqBodyPipe: body => body,
+      reqBodyPipe: async body => body,
       server: undefined,
     }
 
@@ -140,8 +144,8 @@ export default class FluentRequest extends Request {
 
     super(url as string, initOptions)
     // FluentRequest specific init options
-    this.timeoutMs = defaultInitOptions.timeoutMillis
-    // Default configs
+    this.timeoutMillis = defaultInitOptions.timeoutMillis
+    // Default property configs
     this.server = defaults.server
     this.responsePipe = defaults.responsePipe
     this.pluginPipe = defaults.pluginPipe
@@ -166,7 +170,7 @@ export default class FluentRequest extends Request {
    *
    * @param pipe
    */
-  protected pipeRes(pipe: (res: Response) => Response | Promise<Response>): FluentRequest {
+  protected pipeResponse(pipe: (res: Response) => Response | Promise<Response>): FluentRequest {
     const currentPipe = this.responsePipe
     this.responsePipe = res => Promise.resolve(currentPipe(res)).then(pipe)
     return this
@@ -175,11 +179,9 @@ export default class FluentRequest extends Request {
   /**
    * Send the request.
    */
-  private async invoke(): Promise<Response> {
-    let req: FluentRequest = this // tslint:disable-line:no-this-assignment
-
+  private static async invoke(req: FluentRequest): Promise<Response> {
     // Apply plugins
-    // req = await req.pluginPipe(req)
+    req = req.pluginPipe(req)
 
     if (req.rawBody !== undefined) {
       const bodyContent = await req.reqBodyPipe(req.rawBody)
@@ -192,8 +194,8 @@ export default class FluentRequest extends Request {
 
     // Apply timeout, if specified
     let res
-    if (req.timeoutMs !== undefined) {
-      res = await timedFetch(req, req.timeoutMs)
+    if (req.timeoutMillis !== undefined) {
+      res = await timedFetch(req, req.timeoutMillis)
     } else {
       res = await fetch(req)
     }
@@ -215,7 +217,7 @@ export default class FluentRequest extends Request {
    */
   use(plugin: FluentRequestPlugin): FluentRequest {
     const currentPipe = this.pluginPipe
-    this.pluginPipe = req => plugin(currentPipe(req))
+    this.pluginPipe = req => plugin(currentPipe(req));
     return this
   }
 
@@ -452,7 +454,7 @@ export default class FluentRequest extends Request {
    * @param checkFn
    */
   addOkCheck(checkFn: (res: Response) => boolean | Promise<Boolean>): FluentRequest {
-    this.pipeRes(async (res: Response) => {
+    this.pipeResponse(async (res: Response) => {
       const isOk = await checkFn(res)
       if (!isOk) {
         throw new FluentResponseError(res)
@@ -615,7 +617,7 @@ export default class FluentRequest extends Request {
     : Promise<TResult1 | TResult2> {
     let res
     try {
-      res = await this.invoke()
+      res = await FluentRequest.invoke(this)
       if (resolve) {
         return resolve(res)
       }
