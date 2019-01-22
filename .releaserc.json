@@ -14,7 +14,10 @@
     "@semantic-release/git",
     ["@semantic-release/github", {
       "assets": [
-        { "path": "dist/**/*" }
+        { "path": "dist/**/*" },
+        { "path": "src/**/*" },
+        { "path": "package.json" },
+        { "path": "README.md" }
       ]
     }]
   ]

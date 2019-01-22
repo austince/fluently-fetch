@@ -1,6 +1,6 @@
 {
   "name": "fluently-fetch",
-  "version": "0.0.0-development",
+  "version": "1.0.0-alpha",
   "description": "A fluent interface to the fetch API.",
   "license": "MIT",
   "author": "austin ce <austin.cawley@gmail.com> (https://austince.me)",
@@ -40,7 +40,7 @@
     "test-server:start:bg": "cross-env PORT=5000 ts-node test/util/node/start-server &",
     "test-server:kill": "kill $(lsof -t -i:5000)",
     "predeploy": "npm run build",
-    "deploy": "semantic-release"
+    "deploy": "semantic-release --dry-run"
   },
   "dependencies": {
     "@types/form-data": "^2.2.1",
