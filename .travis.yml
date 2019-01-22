@@ -26,6 +26,19 @@ browser_defaults: &browser_defaults
     - sh -e /etc/init.d/xvfb start
     - npm run test-server:start:bg && sleep 2
 
+ssh_deployment: &ssh_deployment
+  before_script:
+    # Decrypt the git_deploy_key.enc key into /tmp/git_deploy_key
+    - openssl aes-256-cbc -K $encrypted_ac56e3ed6a9b_key -iv $encrypted_ac56e3ed6a9b_iv -in fluently_fetch_deploy_key.enc -out ~\/.ssh/fluently_fetch_deploy_key -d
+    # Make sure only the current user can read the private key
+    - chmod 600 /tmp/git_deploy_key
+    # Create a script to return the passphrase environment variable to ssh-add
+    - echo 'echo ${SSH_PASSPHRASE}' > /tmp/askpass && chmod +x /tmp/askpass
+    # Start the authentication agent
+    - eval "$(ssh-agent -s)"
+    # Add the key to the authentication agent
+    - DISPLAY=":0.0" SSH_ASKPASS="/tmp/askpass" setsid ssh-add /tmp/git_deploy_key </dev/null
+
 jobs:
   include:
   - stage: lint
@@ -45,6 +58,7 @@ jobs:
     after_success:
     - codecov -f coverage/firefox/*.json -F browser
   - stage: deploy
+    <<: *ssh_deployment
     node_js:
     - 8
     branches:
@@ -53,6 +67,5 @@ jobs:
     script:
     - npm run deploy
 env:
-  global:
   - secure: bvBWZ4IjqkQdI6X+ETganN2zakWUPvWZxd5f8cIpZoetRXqCjWFecakD8TDcDa/nkPQ6Q3COdUnyZqZ8VkdWe6aE6xd2VX9U6HBDXzA/mTyD9f3Wj97opaWbpQa1FG7L2Ydq+gm2dDNhAqPO/503ePbbIJJ0rPOBbt8JF033ssvlzNlxVxG/1xAnC/PALEwsLON3z02+re6t6/uCPqdYg/QXRTnwNn6eplGaReJEGSaZXCBqSQN2jTc1tNh1Q9wo+MsyPwPvlF2Vo2wOeXEjLnI7fqjIAwAy70iwoBT72owIdJ1dd0CsOvGodtIDE8pL9indGZa/8kt4g/jjva4SXPBY0OI1gSQZTMBZCFFbj3MFMrrQSownX6kfPD49kmQbXsA/erjthM/lopYaBxkvtQxPzV5r8sid/AjWF3E371KxAClZhYNd2bs2SKNBEfhzuRXEuohpFcu95Pta6m8S1Z0rv61BTbhgNxooIq7EwC0LZSGX9eMT9O5SZHCRCX3mq10x86CM/xKz2WOEltj6Z3Ghg5qgb2AiJEMrS9vQPL3mAGN71eG/5vuiUsTCBPgOmSkh3w/S37mWeDrpe3Sl7IXNKjUB+guIxDNyoDzWX+4Vl2kAaQ2eC3ySz2tQvunb4K+FByG2do0zB8QTt1jA66AL7Ow62wWzlRsL25REpgA=
   - secure: xKJH9XU2jFHDUO+EPp9Lpg6qC5vzFTMpAWQT1NeQg66r88eiP7SVvDbDvDs4jovGZvS0dZXZwYWdFwCBYNG3WB360Qko1TMqCj8zslscp2j68hV3+3LXLK9tz7iUYoGmDy3/bz4fXoUn1Y91edyIvgAw/8orUZS2KU2EbC/YSHTMBAcsMX8ZJESRhJdVzxSChgGb1pIgp8WwFgi74fHoE0SJZwa28EoWpoJDmi7lgUzm0WRWPjPSvZU6AI4xZZ0lVbg2jvWztkRK7YhZhLNPHOF65LNvQHNIUAobBg5QS4rH70BCq2jGIsTP52YwW88AOs6KmuQlveF89vW9pyLLJ4nqILqANE8lCm38YmoX6zx66t0fImy5sD/MWaR8lxZK9j28KPQ133hUOsMHN9q3/4Bg8irvNlpR2ajro+oxqEONImlvd4Q88EC0nR1nbVpVbPLpwXdNzd2QJ9Ul9gCA+GuEfmP6tzP0HuvZ4tb5i+2f1IgRKrfQalqMmL2l/+BW5TIyo/HbnpCtb5yfVuPuNmwTu9MZroOUV2iIxQLyT1D81ml0fEb1UTCDeyR8sJICycRXayYnCkvdzd4d948RU/km0ZjBh3E6xryuQIzhSPLTzB7fcPPwzzq+h9YHWyxh9AEfNxdzm0J2oO9vDYBsKGN7mhYLZ7DLpjpJI2Uj6e0=
