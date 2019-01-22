@@ -3,7 +3,6 @@ import * as HttpStatus from 'http-status-codes'
 import fluentlyFetch from '../../src'
 import getBaseUri from '../util/get-base-uri'
 
-
 describe('fluently-fetch setAuth', function () {
   this.timeout(5000)
 
