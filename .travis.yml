@@ -1,7 +1,7 @@
 sudo: true
 language: node_js
 node_js:
-- 6.13.0 # First to backport the WHATWG URL API
+- 6.13.0
 - 8
 - 10
 before_install:
@@ -19,46 +19,39 @@ stages:
 - lint
 - test
 - deploy
-
-browser_defaults: &browser_defaults
-  before_script:
-    - export DISPLAY=:99.0
-    - sh -e /etc/init.d/xvfb start
-    - npm run test-server:start:bg && sleep 2
-
-ssh_deployment: &ssh_deployment
-  before_script:
-    # Decrypt the git_deploy_key.enc key into /tmp/git_deploy_key
-    - openssl aes-256-cbc -K $encrypted_ac56e3ed6a9b_key -iv $encrypted_ac56e3ed6a9b_iv -in fluently_fetch_deploy_key.enc -out ~\/.ssh/fluently_fetch_deploy_key -d
-    # Make sure only the current user can read the private key
-    - chmod 600 /tmp/git_deploy_key
-    # Create a script to return the passphrase environment variable to ssh-add
-    - echo 'echo ${SSH_PASSPHRASE}' > /tmp/askpass && chmod +x /tmp/askpass
-    # Start the authentication agent
-    - eval "$(ssh-agent -s)"
-    # Add the key to the authentication agent
-    - DISPLAY=":0.0" SSH_ASKPASS="/tmp/askpass" setsid ssh-add /tmp/git_deploy_key </dev/null
-
+browser_defaults:
+  before_script: &1
+  - export DISPLAY=:99.0
+  - sh -e /etc/init.d/xvfb start
+  - npm run test-server:start:bg && sleep 2
+ssh_deployment:
+  before_script: &2
+  - openssl aes-256-cbc -K $encrypted_ac56e3ed6a9b_key -iv $encrypted_ac56e3ed6a9b_iv
+    -in fluently_fetch_deploy_key.enc -out ~\/.ssh/fluently_fetch_deploy_key -d
+  - chmod 600 /tmp/git_deploy_key
+  - echo 'echo ${SSH_PASSPHRASE}' > /tmp/askpass && chmod +x /tmp/askpass
+  - eval "$(ssh-agent -s)"
+  - DISPLAY=":0.0" SSH_ASKPASS="/tmp/askpass" setsid ssh-add /tmp/git_deploy_key </dev/null
 jobs:
   include:
   - stage: lint
     script: npm run lint
   - stage: test
-    <<: *browser_defaults
+    before_script: *1
     addons:
       chrome: stable
     script: npm run test:browser -- --browsers ChromeHeadless
     after_success:
     - codecov -f coverage/headlesschrome/*.json -F browser
   - stage: test
-    <<: *browser_defaults
+    before_script: *1
     addons:
       firefox: latest
     script: npm run test:browser -- --browsers FirefoxHeadless
     after_success:
     - codecov -f coverage/firefox/*.json -F browser
   - stage: deploy
-    <<: *ssh_deployment
+    before_script: *2
     node_js:
     - 8
     branches:
@@ -67,5 +60,6 @@ jobs:
     script:
     - npm run deploy
 env:
-  - secure: bvBWZ4IjqkQdI6X+ETganN2zakWUPvWZxd5f8cIpZoetRXqCjWFecakD8TDcDa/nkPQ6Q3COdUnyZqZ8VkdWe6aE6xd2VX9U6HBDXzA/mTyD9f3Wj97opaWbpQa1FG7L2Ydq+gm2dDNhAqPO/503ePbbIJJ0rPOBbt8JF033ssvlzNlxVxG/1xAnC/PALEwsLON3z02+re6t6/uCPqdYg/QXRTnwNn6eplGaReJEGSaZXCBqSQN2jTc1tNh1Q9wo+MsyPwPvlF2Vo2wOeXEjLnI7fqjIAwAy70iwoBT72owIdJ1dd0CsOvGodtIDE8pL9indGZa/8kt4g/jjva4SXPBY0OI1gSQZTMBZCFFbj3MFMrrQSownX6kfPD49kmQbXsA/erjthM/lopYaBxkvtQxPzV5r8sid/AjWF3E371KxAClZhYNd2bs2SKNBEfhzuRXEuohpFcu95Pta6m8S1Z0rv61BTbhgNxooIq7EwC0LZSGX9eMT9O5SZHCRCX3mq10x86CM/xKz2WOEltj6Z3Ghg5qgb2AiJEMrS9vQPL3mAGN71eG/5vuiUsTCBPgOmSkh3w/S37mWeDrpe3Sl7IXNKjUB+guIxDNyoDzWX+4Vl2kAaQ2eC3ySz2tQvunb4K+FByG2do0zB8QTt1jA66AL7Ow62wWzlRsL25REpgA=
-  - secure: xKJH9XU2jFHDUO+EPp9Lpg6qC5vzFTMpAWQT1NeQg66r88eiP7SVvDbDvDs4jovGZvS0dZXZwYWdFwCBYNG3WB360Qko1TMqCj8zslscp2j68hV3+3LXLK9tz7iUYoGmDy3/bz4fXoUn1Y91edyIvgAw/8orUZS2KU2EbC/YSHTMBAcsMX8ZJESRhJdVzxSChgGb1pIgp8WwFgi74fHoE0SJZwa28EoWpoJDmi7lgUzm0WRWPjPSvZU6AI4xZZ0lVbg2jvWztkRK7YhZhLNPHOF65LNvQHNIUAobBg5QS4rH70BCq2jGIsTP52YwW88AOs6KmuQlveF89vW9pyLLJ4nqILqANE8lCm38YmoX6zx66t0fImy5sD/MWaR8lxZK9j28KPQ133hUOsMHN9q3/4Bg8irvNlpR2ajro+oxqEONImlvd4Q88EC0nR1nbVpVbPLpwXdNzd2QJ9Ul9gCA+GuEfmP6tzP0HuvZ4tb5i+2f1IgRKrfQalqMmL2l/+BW5TIyo/HbnpCtb5yfVuPuNmwTu9MZroOUV2iIxQLyT1D81ml0fEb1UTCDeyR8sJICycRXayYnCkvdzd4d948RU/km0ZjBh3E6xryuQIzhSPLTzB7fcPPwzzq+h9YHWyxh9AEfNxdzm0J2oO9vDYBsKGN7mhYLZ7DLpjpJI2Uj6e0=
+  global:
+  - secure: dGumbdoQ3Fd561FqRD0Z+k3OIpjX+CsYNGSc5IVg87OsJR2BJnhj+HJcftL3xhA1grzlN5qdm4sGobaYhu40gNAvq+7ktEnwBmbVK/8mnRrYEC1+chymWsagK6Z1t1fxffKI+BV5cpGJFhdpLgLYS4RRsxOEopVj+4D8ErRchfUOY9jeW4gxhRDjYlajUv3Ok9xwXgah139cqmkVN5gRKgzX9Cbs1vFJ4Q1I4VoyeJUAB6y5qJu9wlrrNxJUVz40zSmSBD51cZS2rTb56cXp5eLca/31GE3qvuzwkFPkLmgYIJzdWNOsoXLRLja077JsJMNSOFhqkRGqLQaniA1VZks2jzMIpSJDb6jjdbHgiptD5XfUIxsFIXdYM1EqOvxDWLcONeFQcuK8VdaP6Zei1XlkQdJiDkFv37tqW2MOjsRNwa/dm/bgm15YHPRTSGm6MTDRKP0RafXRtdZrFKlD5VmCYodBXxu8sDIFAa8H2CzO3Al5HqydcSGVSL7+/LU5cldddG3nDOgaZQvihqzBz7sM+rdndrMy6Q25czYkfab0ULeXjYbTetFxJc5lcM91Nlrs82uhl3gdBTW666NCVqh8Ys3QPdI2PK8uZhPMnCYsRmpEM/Kjnzpgjr3EpuOT+zuah4ybTJxFDC6uXsO+mNy1N7vlDrHcVdDzN6vdVpQ=
+  - secure: uwcyIwGG7M6Y9lKWA3n3C2+aHY2YpUFVFswPW4XM4s1IL2JGtriDix5JnW6vWDu3gPHi9KbrfKmKmuChsRlEodjs3NLJSergUArYTPimtJYdBbXYmnptmC991ikpS2tLlOOhF0tfBkuJDbfLL9th8599UfhtpG4rFx6slo0KwAJVgSr50o/msQtHj1QACFG5/Eck5oKvb8gB76LaIq4bES9r4ikoqNfCwTg20Pt5suytZzhb7xkftecTWgKQGg0QarfMICF3VOnkQAIwenKXhghmVOtXnSDj31/jO4xlcwPauxeJNrKhIHDGzYp1yocs3vj1kuj7uONGhKYf5M6tQtFsM8nM7EYuerDGeGW6xDy82wA5l0E0hcqoNqqvYhGAht+VemL84uhuvR8Lu6Eyj+c8Oq6fGgwSNEBN5FX4aP0gyEs7grsdn0BFDiwXktk70RKNnxtoPYrP/ZTKfTcyfs5UUOpq/NCGkWbbqrLnXLlQQ/D8e4Clxc61iHP/zPvW0pc8MZRVtPpIAFAnExDYDZEKGe8tAGV9EFhyn5Y1kmAOIxXPI8fNQ03/wijM3l4dOTK4jX+sSlhK0iYh6P84zpXbXgHVSA8lRDVS0niggVLdhDsVdwJrL5KN0GQwApcUlGLPNPeMO2THOMug1AsMccdhzetVyW+9WSKyJI8fp8A=
