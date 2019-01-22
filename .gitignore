@@ -5,8 +5,8 @@ dist
 ### Test coverage
 test/out
 
-### Documentation
-docs
+### Generated Documentation
+docs/api
 
 ### Temp test data
 tmp
