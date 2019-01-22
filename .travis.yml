@@ -27,7 +27,7 @@ browser_defaults:
 ssh_deployment:
   before_script: &2
   - openssl aes-256-cbc -K $encrypted_ac56e3ed6a9b_key -iv $encrypted_ac56e3ed6a9b_iv
-    -in fluently_fetch_deploy_key.enc -out ~\/.ssh/fluently_fetch_deploy_key -d
+    -in git_deploy_key.enc -out /tmp/git_deploy_key -d
   - chmod 600 /tmp/git_deploy_key
   - echo 'echo ${SSH_PASSPHRASE}' > /tmp/askpass && chmod +x /tmp/askpass
   - eval "$(ssh-agent -s)"
