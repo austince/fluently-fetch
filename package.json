@@ -1,7 +1,7 @@
 {
   "name": "fluently-fetch",
   "version": "0.0.0-development",
-  "description": "A fluent interface to the fetch API, loosely-based on the Superagent API.",
+  "description": "A fluent interface to the fetch API.",
   "license": "MIT",
   "author": "austin ce <austin.cawley@gmail.com> (https://austince.me)",
   "contributors": [
@@ -18,7 +18,6 @@
     "src",
     "dist",
     "README.md",
-    "migration.md",
     "tsconfig.json"
   ],
   "types": "./dist/types",
@@ -32,7 +31,7 @@
     "build:browser": "BROWSER=true rollup -c",
     "postbuild:browser": "rimraf dist/browser/**/*.d.ts dist/browser/*.d.ts",
     "prebuild:docs": "rimraf docs",
-    "build:docs": "typedoc --out docs --theme minimal --name fluently-fetch --readme README.md --mode file --ignoreCompilerErrors",
+    "build:docs": "typedoc --out docs/api --theme minimal --name fluently-fetch --readme README.md --mode file --ignoreCompilerErrors",
     "test": "npm run test:node && npm run test:browser",
     "test:node": "nyc mocha",
     "posttest:node": "nyc report --reporter=json",
@@ -41,7 +40,7 @@
     "test-server:start:bg": "cross-env PORT=5000 ts-node test/util/node/start-server &",
     "test-server:kill": "kill $(lsof -t -i:5000)",
     "predeploy": "npm run build",
-    "deploy": "semantic-release --dry-run"
+    "deploy": "semantic-release"
   },
   "dependencies": {
     "@types/form-data": "^2.2.1",

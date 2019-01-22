@@ -43,6 +43,9 @@ function getContentTypeForBody(body): string | null {
   return shortHandTypes.json
 }
 
+/**
+ * Extended Init options for different body types and timeout support.
+ */
 export interface FluentRequestInit extends RequestInit {
   url?: string
   body?: any
@@ -69,7 +72,7 @@ export interface FormAttachOptions {
  * @extends Request
  * @implements PromiseLike<Response>
  */
-export default class FluentRequest extends Request {
+export default class FluentRequest extends Request implements PromiseLike<Response> {
   protected server?: Server
   /**
    * Body before it is serialized for the request.
@@ -78,7 +81,7 @@ export default class FluentRequest extends Request {
   protected pluginPipe: FluentRequestPlugin
   protected responsePipe: (res: Response) => Response|Promise<Response>
   protected reqBodyPipe: (body: any) => any|Promise<any>
-  protected timeoutMillis: number | undefined
+  protected readonly timeoutMillis: number | undefined
 
   /**
    * Clone over the {@link FluentRequestInit} options from a request.
