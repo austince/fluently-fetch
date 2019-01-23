@@ -58,7 +58,6 @@ jobs:
       only:
       - master
     script:
-    - echo $secret
     - npm run deploy
 env:
   global:
