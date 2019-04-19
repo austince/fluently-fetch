@@ -38,7 +38,7 @@ describe('fluently-fetch addBodySerializer', function () {
   ]
 
   function runTestsForSerializer(fn: (any) => any | Promise<any>) {
-    data.forEach(({ input, expected }) => it(`should serialize '${input}'`, async () => {
+    data.forEach(({ input, expected }) => it(`should serialize '${JSON.stringify(input)}'`, async () => {
       const serializer = sandbox.spy(fn)
       const res = await fluentlyFetch(uri)
         .post('/echo')

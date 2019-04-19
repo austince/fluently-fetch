@@ -1,5 +1,6 @@
 import { Server } from 'net'
 import { ReadStream } from 'fs'
+import cloneDeep = require('lodash.clonedeep')
 import assignUrl from './util/assign-url'
 import assignFormData from './util/assign-form-data'
 import serverAddress from './util/server-address'
@@ -44,15 +45,6 @@ function getContentTypeForBody(body): string | null {
 }
 
 /**
- * Extended Init options for different body types and timeout support.
- */
-export interface FluentRequestInit extends RequestInit {
-  url?: string
-  body?: any
-  timeoutMillis?: number
-}
-
-/**
  * Extended input options to accept servers and other FluentRequests.
  */
 export type FluentRequestInfo = FluentRequest | Server | HttpApp | RequestInfo
@@ -65,6 +57,19 @@ export interface FormAttachOptions {
   filename?: string
   contentType?: string
 }
+
+/**
+ * Extended Init options for different body types and timeout support.
+ */
+export interface FluentRequestInit extends RequestInit {
+  url?: string
+  body?: any
+  timeoutMillis?: number,
+  responsePipe?: any,
+  reqBodyPipe?: any,
+  pluginPipe?: any,
+}
+
 
 /**
  * A fluent Request that is fully compatible with {@link fetch}.
@@ -219,9 +224,10 @@ export default class FluentRequest extends Request implements PromiseLike<Respon
    * @param plugin
    */
   use(plugin: FluentRequestPlugin): FluentRequest {
-    const currentPipe = this.pluginPipe
-    this.pluginPipe = req => plugin(currentPipe(req));
-    return this
+    const clone = this.clone()
+    const currentPipe = clone.pluginPipe
+    clone.pluginPipe = req => plugin(currentPipe(req));
+    return clone
   }
 
   /**
@@ -232,7 +238,7 @@ export default class FluentRequest extends Request implements PromiseLike<Respon
    */
   clone(overrides: FluentRequestInit = {}): FluentRequest {
     const initOptions = Object.assign(FluentRequest.getInitOptions(this), overrides)
-    let cloned
+    let cloned: FluentRequest
     if (this.server) {
       initOptions.url = overrides.url || this.url
       cloned = new FluentRequest(this.server, initOptions)
@@ -241,10 +247,10 @@ export default class FluentRequest extends Request implements PromiseLike<Respon
       cloned = new FluentRequest(url, initOptions)
     }
 
-    cloned.responsePipe = this.responsePipe
-    cloned.pluginPipe = this.pluginPipe
-    cloned.reqBodyPipe = this.reqBodyPipe
-    cloned.rawBody = this.rawBody
+    cloned.responsePipe = (res) => this.responsePipe(res)
+    cloned.pluginPipe = (req) => this.pluginPipe(req)
+    cloned.reqBodyPipe = (body) => this.reqBodyPipe(body)
+    cloned.rawBody = cloneDeep(this.rawBody)
 
     return cloned
   }
@@ -438,6 +444,11 @@ export default class FluentRequest extends Request implements PromiseLike<Respon
     })
   }
 
+  /**
+   * Set the request credentials.
+   *
+   * @param credentials 
+   */
   setCredentials(credentials: RequestCredentials) {
     return this.clone({
       credentials,

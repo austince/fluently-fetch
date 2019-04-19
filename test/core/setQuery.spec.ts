@@ -37,7 +37,7 @@ describe('fluently-fetch setQuery', function () {
       expected: { meddling: 'kids' },
     },
   ].forEach(({ input, expected }) =>
-    it(`should set query from ${input.constructor.name} '${input}'`, async () => {
+    it(`should set query from ${typeof input} '${JSON.stringify(input)}'`, async () => {
       const res = await fluentlyFetch(uri)
         .get('/echo')
         .setQuery(input)
@@ -57,7 +57,7 @@ describe('fluently-fetch setQuery', function () {
       expected: { kids: 'meddling', dog: 'scooby' },
     },
   ].forEach(({ input: [first, second], expected }) =>
-    it(`should join queries ${first.constructor.name} '${first}' and ${second.constructor.name} '${second}'`,
+    it(`should join queries ${typeof first} '${JSON.stringify(first)}' and ${typeof second} '${JSON.stringify(second)}'`,
       async () => {
         const res = await fluentlyFetch(uri)
           .get('/echo')
